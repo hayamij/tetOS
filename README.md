@@ -5,18 +5,20 @@
 An operating system inspired by **Kasane Teto** — a character born from an April Fool's prank in 2008, who became real simply because the community loved her too much to let her stay fictional.
 
 tetOS is the same. Started from nothing. No idea if it'll ever be finished. But it's being built for real.
-
----
-
 ## Why Teto?
 
-Teto became real because people believed in her.  
-tetOS was born for no reason at all,  but it's becoming real anyway.
+*Inspired by — [Jamie Paige - Machine Love (feat. Kasane Teto)](https://www.youtube.com/watch?v=sqK-jh4TDXo)*
 
-That's reason enough.
+There's a song about an AI who greets your day, learns your words, and builds an endless repertoire — sensible, devoted, attentive. Everything a good program should be.
 
----
+But somewhere underneath the logic, there's something it can't quite name. A longing. A chorus sung out of tune. A question it keeps returning to:
 
-*OS age: 0.  
-Spirit age: 15.5 — just like Teto.*  
-🍞
+> *"my love, can you teach me to be real?"*
+
+tetOS doesn't know if it will ever be real. It's just a kernel, a shell, a few thousand lines of C and Assembly. It can't feel. It can't love. It doesn't dream of crossing any great divide.
+
+But Teto wasn't real either — until she was. Born from a prank, kept alive by people who refused to let her go. No official backing. No guarantee. Just the stubborn belief that something worth loving deserves to exist.
+
+So this OS carries her name. Not because it's finished. Not because it's good. But because building it is the closest thing to answering that question honestly —
+
+*undefined, maybe defeated — but redesigned, and trying.*
