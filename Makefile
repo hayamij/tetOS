@@ -54,11 +54,10 @@ $(KERNEL_BIN): $(KERNEL_OBJECTS)
 
 $(OS_IMAGE): $(BOOTLOADER) $(KERNEL_BIN)
 	cat $(BOOTLOADER) $(KERNEL_BIN) > $@
-	@SIZE=$$(stat -c%s $@); \
-	SECTORS=$$((($${SIZE} + 511) / 512)); \
-	BYTES=$$(($$SECTORS * 512)); \
-	if [ $$SIZE -lt $$BYTES ]; then \
-		dd if=/dev/zero bs=1 count=$$(($$BYTES - $$SIZE)) >> $@ 2>/dev/null; \
+	@MINIMUM=$$((51 * 512)); \
+	CURRENT=$$(stat -c%s $@); \
+	if [ $$CURRENT -lt $$MINIMUM ]; then \
+		dd if=/dev/zero bs=1 count=$$(($$MINIMUM - $$CURRENT)) >> $@ 2>/dev/null; \
 	fi
 
 # Clean build artifacts

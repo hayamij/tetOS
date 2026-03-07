@@ -5,6 +5,11 @@
 #include "keyboard.h"
 #include "shell.h"
 #include "stdio.h"
+#include "pmm.h"
+#include "vmm.h"
+#include "heap.h"
+
+extern uint32_t kernel_end;
 
 void kernel_main(void) {
     vga_init();
@@ -34,6 +39,18 @@ void kernel_main(void) {
     isr_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" ISR initialized\n");
+
+    pmm_init((uint32_t)&kernel_end);
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" PMM initialized (120 MB free)\n");
+
+    vmm_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" VMM initialized (32 MB identity mapped, paging on)\n");
+
+    heap_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Heap initialized (4 MB at 0x400000)\n");
     
     timer_init(100);
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);

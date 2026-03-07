@@ -4,6 +4,8 @@
 #include "stdio.h"
 #include "string.h"
 #include "timer.h"
+#include "pmm.h"
+#include "heap.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
@@ -24,6 +26,7 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  clear  - Clear the screen\n");
         vga_write("  echo   - Print text\n");
         vga_write("  uptime - Show system uptime\n");
+        vga_write("  mem    - Show memory info\n");
         vga_write("  about  - About tetOS\n");
     }
     else if (strcmp(cmd, "clear") == 0) {
@@ -41,6 +44,19 @@ static void shell_execute_command(const char* cmd) {
         
         kprintf("Uptime: %u hours, %u minutes, %u seconds\n", 
                 hours, minutes % 60, seconds % 60);
+    }
+    else if (strcmp(cmd, "mem") == 0) {
+        uint32_t free_f  = pmm_free_frames();
+        uint32_t total_f = pmm_total_frames();
+        uint32_t used_f  = total_f - free_f;
+        uint32_t heap_used = heap_used_bytes();
+        kprintf("Physical Memory:\n");
+        kprintf("  Total: %u MB (%u frames)\n", total_f / 256, total_f);
+        kprintf("  Used:  %u MB (%u frames)\n", used_f / 256, used_f);
+        kprintf("  Free:  %u MB (%u frames)\n", free_f / 256, free_f);
+        kprintf("Kernel Heap (4 MB at 0x400000):\n");
+        kprintf("  Used:  %u bytes\n", heap_used);
+        kprintf("  Free:  %u bytes\n", 4 * 1024 * 1024 - heap_used);
     }
     else if (strcmp(cmd, "about") == 0) {
         vga_write_color("\n=== tetOS v0.1.0 ===\n", VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
