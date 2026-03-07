@@ -1,8 +1,16 @@
 #include "vga.h"
+#include "io.h"
 
 static uint16_t* vga_buffer = (uint16_t*)VGA_MEMORY;
 static uint32_t vga_index = 0;
 static uint8_t vga_current_color = 0x0F;
+
+static void vga_update_cursor(void) {
+    outb(0x3D4, 0x0F);
+    outb(0x3D5, (uint8_t)(vga_index & 0xFF));
+    outb(0x3D4, 0x0E);
+    outb(0x3D5, (uint8_t)((vga_index >> 8) & 0xFF));
+}
 
 static inline uint16_t vga_entry(char c, uint8_t color) {
     return (uint16_t)c | (uint16_t)color << 8;
@@ -22,6 +30,7 @@ void vga_clear(void) {
         vga_buffer[i] = vga_entry(' ', vga_current_color);
     }
     vga_index = 0;
+    vga_update_cursor();
 }
 
 void vga_set_color(uint8_t fg, uint8_t bg) {
@@ -58,12 +67,22 @@ void vga_putchar(char c) {
         return;
     }
     
+    if (c == '\b') {
+        if (vga_index > 0) {
+            vga_index--;
+            vga_buffer[vga_index] = vga_entry(' ', vga_current_color);
+        }
+        return;
+    }
+    
     vga_buffer[vga_index] = vga_entry(c, vga_current_color);
     vga_index++;
     
     if (vga_index >= VGA_WIDTH * VGA_HEIGHT) {
         vga_newline();
     }
+    
+    vga_update_cursor();
 }
 
 void vga_write(const char* str) {
