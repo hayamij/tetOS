@@ -8,6 +8,7 @@
 #include "pmm.h"
 #include "vmm.h"
 #include "heap.h"
+#include "ata.h"
 
 extern uint32_t kernel_end;
 
@@ -59,6 +60,14 @@ void kernel_main(void) {
     keyboard_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Keyboard initialized\n");
+
+    if (ata_init() == 0) {
+        vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_write(" ATA disk detected\n");
+    } else {
+        vga_write_color("[--]", VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
+        vga_write(" No ATA disk\n");
+    }
     
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" VGA text mode active (80x25)\n");

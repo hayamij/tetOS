@@ -6,6 +6,7 @@
 #include "timer.h"
 #include "pmm.h"
 #include "heap.h"
+#include "ata.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
@@ -27,6 +28,7 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  echo   - Print text\n");
         vga_write("  uptime - Show system uptime\n");
         vga_write("  mem    - Show memory info\n");
+        vga_write("  disk   - Show disk info\n");
         vga_write("  about  - About tetOS\n");
     }
     else if (strcmp(cmd, "clear") == 0) {
@@ -57,6 +59,16 @@ static void shell_execute_command(const char* cmd) {
         kprintf("Kernel Heap (4 MB at 0x400000):\n");
         kprintf("  Used:  %u bytes\n", heap_used);
         kprintf("  Free:  %u bytes\n", 4 * 1024 * 1024 - heap_used);
+    }
+    else if (strcmp(cmd, "disk") == 0) {
+        ata_drive_t* d = ata_get_drive();
+        if (!d->present) {
+            vga_write("No disk detected.\n");
+        } else {
+            kprintf("Model:   %s\n", d->model);
+            kprintf("Sectors: %u\n", d->sectors);
+            kprintf("Size:    %u MB\n", d->sectors / 2048);
+        }
     }
     else if (strcmp(cmd, "about") == 0) {
         vga_write_color("\n=== tetOS v0.1.0 ===\n", VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
