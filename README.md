@@ -1,4 +1,4 @@
-# tetOS 🍞
+# tetOS
 
 > *"Not a Vocaloid. Not Windows. But it's real."*
 
