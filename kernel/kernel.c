@@ -9,6 +9,7 @@
 #include "vmm.h"
 #include "heap.h"
 #include "ata.h"
+#include "process.h"
 
 extern uint32_t kernel_end;
 
@@ -68,6 +69,11 @@ void kernel_main(void) {
         vga_write_color("[--]", VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
         vga_write(" No ATA disk\n");
     }
+
+    process_init();
+    timer_set_scheduler(schedule);
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Process manager initialized\n");
     
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" VGA text mode active (80x25)\n");

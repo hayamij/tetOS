@@ -7,11 +7,28 @@
 #include "pmm.h"
 #include "heap.h"
 #include "ata.h"
+#include "process.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
 static char command_buffer[COMMAND_BUFFER_SIZE];
 static uint32_t command_pos = 0;
+
+/* Demo process: spins a character at top-right corner of VGA then exits */
+static void demo_proc_entry(void) {
+    volatile uint16_t *pos = (volatile uint16_t *)0xB8000 + 79;
+    const char spin[] = "-\\|/";
+    uint32_t i = 0;
+    volatile uint32_t delay;
+    while (i < 400) {
+        *pos = (uint16_t)((0x0A << 8) | spin[i % 4]);
+        i++;
+        for (delay = 0; delay < 200000; delay++)
+            __asm__ volatile("nop");
+    }
+    *pos = (uint16_t)((0x07 << 8) | ' ');  /* clear spinner */
+    process_exit();
+}
 
 static void shell_print_prompt(void) {
     vga_write_color("teto", VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
@@ -29,6 +46,8 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  uptime - Show system uptime\n");
         vga_write("  mem    - Show memory info\n");
         vga_write("  disk   - Show disk info\n");
+        vga_write("  ps     - List running processes\n");
+        vga_write("  spawn  - Spawn a demo background process\n");
         vga_write("  about  - About tetOS\n");
     }
     else if (strcmp(cmd, "clear") == 0) {
@@ -68,6 +87,30 @@ static void shell_execute_command(const char* cmd) {
             kprintf("Model:   %s\n", d->model);
             kprintf("Sectors: %u\n", d->sectors);
             kprintf("Size:    %u MB\n", d->sectors / 2048);
+        }
+    }
+    else if (strcmp(cmd, "ps") == 0) {
+        process_t *list[MAX_PROCS];
+        int count = process_list(list, MAX_PROCS);
+        int i;
+        vga_write("PID  STATE    NAME\n");
+        vga_write("---  -------  ----\n");
+        for (i = 0; i < count; i++) {
+            const char *s;
+            if      (list[i]->state == PROC_READY)   s = "READY  ";
+            else if (list[i]->state == PROC_RUNNING) s = "RUNNING";
+            else if (list[i]->state == PROC_DEAD)    s = "DEAD   ";
+            else                                     s = "???????";
+            kprintf("%u    %s  %s\n", list[i]->pid, s, list[i]->name);
+        }
+    }
+    else if (strcmp(cmd, "spawn") == 0) {
+        process_t *p = process_create(demo_proc_entry, "demo");
+        if (p) {
+            kprintf("Spawned PID %u: %s\n", p->pid, p->name);
+            vga_write("Watch the top-right corner...\n");
+        } else {
+            vga_write("Failed: no free process slots\n");
         }
     }
     else if (strcmp(cmd, "about") == 0) {

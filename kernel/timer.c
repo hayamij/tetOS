@@ -3,10 +3,15 @@
 #include "io.h"
 
 static volatile uint32_t tick_count = 0;
+static void (*sched_hook)(struct registers *) = NULL;
+
+void timer_set_scheduler(void (*cb)(struct registers *)) {
+    sched_hook = cb;
+}
 
 static void timer_callback(struct registers* regs) {
-    (void)regs;
     tick_count++;
+    if (sched_hook) sched_hook(regs);
 }
 
 void timer_init(uint32_t frequency) {
