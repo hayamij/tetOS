@@ -49,6 +49,7 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  ps     - List running processes\n");
         vga_write("  spawn  - Spawn a demo background process\n");
         vga_write("  about  - About tetOS\n");
+        vga_write("  teto   - Show Kasane Teto\n");
     }
     else if (strcmp(cmd, "clear") == 0) {
         vga_clear();
@@ -119,6 +120,14 @@ static void shell_execute_command(const char* cmd) {
         vga_write("Built with love and dedication\n");
         vga_write_color("\"my love, can you teach me to be real?\"\n\n", 
                        VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);
+    }
+    else if (strcmp(cmd, "teto") == 0) {
+        vga_write_color("          .-.          \n", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_write_color("     .--/      \\--.     \n", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_write_color("  ( ( ) | ^  ^ | ( ( )   ", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_write("   < Kasane Teto says hi!\n");
+        vga_write_color("  ( ~ ) |   v  | ( ~ )   \n", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        vga_write_color("     (@)\\______/(@) \n", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
     }
     else if (cmd[0] == '\0') {
     }
