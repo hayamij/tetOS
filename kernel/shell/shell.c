@@ -8,13 +8,16 @@
 #include "../heap/heap.h"
 #include "../ata/ata.h"
 #include "../process/process.h"
+#include "../fs/tetfs.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
-static char command_buffer[COMMAND_BUFFER_SIZE];
+static char     command_buffer[COMMAND_BUFFER_SIZE];
 static uint32_t command_pos = 0;
 
-/* Demo process: spins a character at top-right corner of VGA then exits */
+static uint16_t cwd_inode = TETFS_ROOT_INODE;
+static char     cwd_path[128] = "/";
+
 static void demo_proc_entry(void) {
     volatile uint16_t *pos = (volatile uint16_t *)0xB8000 + 79;
     const char spin[] = "-\\|/";
@@ -26,7 +29,7 @@ static void demo_proc_entry(void) {
         for (delay = 0; delay < 200000; delay++)
             __asm__ volatile("nop");
     }
-    *pos = (uint16_t)((0x07 << 8) | ' ');  /* clear spinner */
+    *pos = (uint16_t)((0x07 << 8) | ' ');
     process_exit();
 }
 
@@ -34,6 +37,8 @@ static void shell_print_prompt(void) {
     vga_write_color("teto", VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
     vga_write_color("@", VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     vga_write_color("tetOS", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write_color(":", VGA_COLOR_WHITE, VGA_COLOR_BLACK);
+    vga_write_color(cwd_path, VGA_COLOR_YELLOW, VGA_COLOR_BLACK);
     vga_write(" $ ");
 }
 
@@ -48,6 +53,15 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  disk   - Show disk info\n");
         vga_write("  ps     - List running processes\n");
         vga_write("  spawn  - Spawn a demo background process\n");
+        vga_write("  format - Format tetFS on disk\n");
+        vga_write("  ls     - List files\n");
+        vga_write("  cd     - Change directory\n");
+        vga_write("  pwd    - Print working directory\n");
+        vga_write("  touch  - Create empty file\n");
+        vga_write("  mkdir  - Create directory\n");
+        vga_write("  cat    - Concatenate and print file contents\n");
+        vga_write("  write  - Write text to file\n");
+        vga_write("  rm     - Delete file or directory\n");
         vga_write("  about  - About tetOS\n");
         vga_write("  teto   - Show Kasane Teto\n");
     }
@@ -112,6 +126,162 @@ static void shell_execute_command(const char* cmd) {
             vga_write("Watch the top-right corner...\n");
         } else {
             vga_write("Failed: no free process slots\n");
+        }
+    }
+    else if (strcmp(cmd, "format") == 0) {
+        vga_write("Formatting tetFS...");
+        if (tetfs_format() == 0)
+            vga_write(" done.\n");
+        else
+            vga_write(" FAILED.\n");
+    }
+    else if (strcmp(cmd, "ls") == 0) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem mounted. Run 'format' first.\n"); }
+        else {
+            tetfs_inode_t list[TETFS_MAX_INODES];
+            int n = tetfs_list(cwd_inode, list, TETFS_MAX_INODES);
+            int i;
+            if (n == 0) { vga_write("(empty)\n"); }
+            for (i = 0; i < n; i++) {
+                if (list[i].type == TETFS_TYPE_DIR) {
+                    vga_write_color(list[i].name, VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
+                    int idx = tetfs_find(list[i].name, cwd_inode);
+                    int children = (idx >= 0) ? tetfs_count_children((uint16_t)idx) : 0;
+                    kprintf("  (%d items)\n", children);
+                } else {
+                    vga_write(list[i].name);
+                    kprintf("  (%u B)\n", list[i].size);
+                }
+            }
+        }
+    }
+    else if (strcmp(cmd, "pwd") == 0) {
+        vga_write(cwd_path);
+        vga_write("\n");
+    }
+    else if (strncmp(cmd, "cd", 2) == 0 && (cmd[2] == '\0' || cmd[2] == ' ')) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem.\n"); }
+        else {
+            const char *target = (cmd[2] == ' ') ? cmd + 3 : "/";
+            if (strcmp(target, "/") == 0 || target[0] == '\0') {
+                cwd_inode = TETFS_ROOT_INODE;
+                cwd_path[0] = '/';
+                cwd_path[1] = '\0';
+            } else if (strcmp(target, "..") == 0) {
+                if (cwd_inode == TETFS_ROOT_INODE) {
+                } else {
+                    tetfs_inode_t node;
+                    tetfs_read_inode(cwd_inode, &node);
+                    uint16_t parent = node.parent;
+                    if (parent == 0xFFFF) parent = TETFS_ROOT_INODE;
+                    cwd_inode = parent;
+                    uint32_t len = (uint32_t)strlen(cwd_path);
+                    if (len > 1 && cwd_path[len-1] == '/') { cwd_path[--len] = '\0'; }
+                    while (len > 1 && cwd_path[len-1] != '/') len--;
+                    cwd_path[len] = '\0';
+                    if (len == 0) { cwd_path[0] = '/'; cwd_path[1] = '\0'; }
+                }
+            } else {
+                int idx = tetfs_find(target, cwd_inode);
+                if (idx < 0) {
+                    vga_write("cd: no such directory: ");
+                    vga_write(target);
+                    vga_write("\n");
+                } else {
+                    tetfs_inode_t node;
+                    tetfs_read_inode((uint16_t)idx, &node);
+                    if (node.type != TETFS_TYPE_DIR) {
+                        vga_write("cd: not a directory: ");
+                        vga_write(target);
+                        vga_write("\n");
+                    } else {
+                        cwd_inode = (uint16_t)idx;
+                        int len = (int)strlen(cwd_path);
+                        if (len > 1) cwd_path[len++] = '/';
+                        int j = 0;
+                        while (target[j] && len < 126)
+                            cwd_path[len++] = target[j++];
+                        cwd_path[len] = '\0';
+                    }
+                }
+            }
+        }
+    }
+    else if (strncmp(cmd, "touch ", 6) == 0) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem.\n"); }
+        else {
+            int r = tetfs_create(cmd + 6, cwd_inode, TETFS_TYPE_FILE);
+            if (r >= 0) vga_write("Created.\n");
+            else        vga_write("Failed (exists or full).\n");
+        }
+    }
+    else if (strncmp(cmd, "mkdir ", 6) == 0) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem.\n"); }
+        else {
+            int r = tetfs_create(cmd + 6, cwd_inode, TETFS_TYPE_DIR);
+            if (r >= 0) vga_write("Created.\n");
+            else        vga_write("Failed (exists or full).\n");
+        }
+    }
+    else if (strncmp(cmd, "cat ", 4) == 0) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem.\n"); }
+        else {
+            int idx = tetfs_find(cmd + 4, cwd_inode);
+            if (idx < 0) { vga_write("File not found.\n"); }
+            else {
+                tetfs_inode_t node;
+                tetfs_read_inode((uint16_t)idx, &node);
+                if (node.size == 0) { vga_write("(empty file)\n"); }
+                else {
+                    char  buf[513];
+                    uint32_t off = 0;
+                    while (off < node.size) {
+                        int n = tetfs_read((uint16_t)idx, buf, off, 512);
+                        if (n <= 0) break;
+                        buf[n] = '\0';
+                        vga_write(buf);
+                        off += (uint32_t)n;
+                    }
+                    vga_write("\n");
+                }
+            }
+        }
+    }
+    else if (strncmp(cmd, "write ", 6) == 0) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem.\n"); }
+        else {
+            const char *rest = cmd + 6;
+            int i = 0;
+            while (rest[i] && rest[i] != ' ') i++;
+            if (!rest[i]) { vga_write("Usage: write <file> <content>\n"); }
+            else {
+                char name[52];
+                int j;
+                for (j = 0; j < i && j < 50; j++) name[j] = rest[j];
+                name[j] = '\0';
+                const char *content = rest + i + 1;
+                uint32_t len = (uint32_t)strlen(content);
+
+                int idx = tetfs_find(name, cwd_inode);
+                if (idx < 0)
+                    idx = tetfs_create(name, cwd_inode, TETFS_TYPE_FILE);
+                if (idx < 0) { vga_write("Cannot create file.\n"); }
+                else if (tetfs_write((uint16_t)idx, content, len) == 0)
+                    kprintf("Wrote %u bytes to '%s'.\n", len, name);
+                else
+                    vga_write("Write failed.\n");
+            }
+        }
+    }
+    else if (strncmp(cmd, "rm ", 3) == 0) {
+        if (!tetfs_is_mounted()) { vga_write("No filesystem.\n"); }
+        else {
+            int idx = tetfs_find(cmd + 3, cwd_inode);
+            if (idx < 0) { vga_write("Not found.\n"); }
+            else if (tetfs_delete((uint16_t)idx) == 0)
+                vga_write("Deleted.\n");
+            else
+                vga_write("Delete failed.\n");
         }
     }
     else if (strcmp(cmd, "about") == 0) {

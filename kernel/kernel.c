@@ -10,6 +10,7 @@
 #include "heap/heap.h"
 #include "ata/ata.h"
 #include "process/process.h"
+#include "fs/tetfs.h"
 
 extern uint32_t kernel_end;
 
@@ -74,6 +75,15 @@ void kernel_main(void) {
     timer_set_scheduler(schedule);
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Process manager initialized\n");
+
+    fs_init();
+    if (tetfs_is_mounted()) {
+        vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_write(" tetFS mounted\n");
+    } else {
+        vga_write_color("[--]", VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
+        vga_write(" tetFS not formatted (run 'format')\n");
+    }
     
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" VGA text mode active (80x25)\n");
