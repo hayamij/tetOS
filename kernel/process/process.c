@@ -1,6 +1,6 @@
 #include "process.h"
-#include "heap.h"
-#include "string.h"
+#include "../heap/heap.h"
+#include "../string/string.h"
 
 static process_t  process_table[MAX_PROCS];
 static process_t *run_queue       = NULL;

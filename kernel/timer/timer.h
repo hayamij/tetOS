@@ -1,8 +1,8 @@
 #ifndef TIMER_H
 #define TIMER_H
 
-#include "types.h"
-#include "isr.h"
+#include "../types/types.h"
+#include "../isr/isr.h"
 
 void timer_init(uint32_t frequency);
 uint32_t timer_ticks(void);

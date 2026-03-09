@@ -1,6 +1,6 @@
 #include "timer.h"
-#include "isr.h"
-#include "io.h"
+#include "../isr/isr.h"
+#include "../io/io.h"
 
 static volatile uint32_t tick_count = 0;
 static void (*sched_hook)(struct registers *) = NULL;

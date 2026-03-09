@@ -1,7 +1,7 @@
 #include "isr.h"
-#include "idt.h"
-#include "vga.h"
-#include "io.h"
+#include "../idt/idt.h"
+#include "../vga/vga.h"
+#include "../io/io.h"
 
 isr_handler_t interrupt_handlers[256];
 

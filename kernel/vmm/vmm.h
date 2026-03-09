@@ -1,7 +1,7 @@
 #ifndef VMM_H
 #define VMM_H
 
-#include "types.h"
+#include "../types/types.h"
 
 #define PAGE_PRESENT  0x01
 #define PAGE_WRITE    0x02

@@ -1,7 +1,7 @@
 #ifndef PMM_H
 #define PMM_H
 
-#include "types.h"
+#include "../types/types.h"
 
 #define PMM_FRAME_SIZE    4096
 #define PMM_MEMORY_SIZE   (128 * 1024 * 1024)

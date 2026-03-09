@@ -20,12 +20,15 @@ BOOTLOADER = $(BUILD_DIR)/boot.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 OS_IMAGE = $(BUILD_DIR)/tetos.bin
 
-# Source files
-KERNEL_C_SOURCES = $(wildcard $(KERNEL_DIR)/*.c)
-KERNEL_ASM_SOURCES = $(filter-out $(KERNEL_DIR)/entry.asm, $(wildcard $(KERNEL_DIR)/*.asm))
+# Source files (recursive search through subdirectories)
+KERNEL_C_SOURCES = $(shell find $(KERNEL_DIR) -name "*.c")
+KERNEL_ASM_SOURCES = $(filter-out $(KERNEL_DIR)/entry.asm, $(shell find $(KERNEL_DIR) -name "*.asm"))
 KERNEL_OBJECTS = $(BUILD_DIR)/entry.o \
-                 $(patsubst $(KERNEL_DIR)/%.c, $(BUILD_DIR)/%.o, $(KERNEL_C_SOURCES)) \
-                 $(patsubst $(KERNEL_DIR)/%.asm, $(BUILD_DIR)/%.o, $(KERNEL_ASM_SOURCES))
+                 $(addprefix $(BUILD_DIR)/, $(patsubst %.c, %.o, $(notdir $(KERNEL_C_SOURCES)))) \
+                 $(addprefix $(BUILD_DIR)/, $(patsubst %.asm, %.o, $(notdir $(KERNEL_ASM_SOURCES))))
+
+# VPATH lets make find source files in subdirectories
+VPATH = $(shell find $(KERNEL_DIR) -type d)
 
 # Default target
 .PHONY: all
@@ -39,12 +42,16 @@ $(BUILD_DIR):
 $(BOOTLOADER): $(BOOT_DIR)/boot.asm | $(BUILD_DIR)
 	nasm -f bin $< -o $@
 
-# Build kernel C files
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.c | $(BUILD_DIR)
+# Build kernel entry point (explicit rule)
+$(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.asm | $(BUILD_DIR)
+	$(ASM) $(ASMFLAGS) $< -o $@
+
+# Build kernel C files (VPATH resolves source location)
+$(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Build kernel assembly files (ELF format)
-$(BUILD_DIR)/%.o: $(KERNEL_DIR)/%.asm | $(BUILD_DIR)
+# Build kernel assembly files (VPATH resolves source location)
+$(BUILD_DIR)/%.o: %.asm | $(BUILD_DIR)
 	$(ASM) $(ASMFLAGS) $< -o $@
 
 # Link kernel

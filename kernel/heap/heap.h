@@ -1,7 +1,7 @@
 #ifndef HEAP_H
 #define HEAP_H
 
-#include "types.h"
+#include "../types/types.h"
 
 void     heap_init(void);
 void*    kmalloc(uint32_t size);

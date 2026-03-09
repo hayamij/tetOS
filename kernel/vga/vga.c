@@ -1,5 +1,5 @@
 #include "vga.h"
-#include "io.h"
+#include "../io/io.h"
 
 static uint16_t* vga_buffer = (uint16_t*)VGA_MEMORY;
 static uint32_t vga_index = 0;

@@ -1,6 +1,6 @@
 #include "vmm.h"
-#include "pmm.h"
-#include "string.h"
+#include "../pmm/pmm.h"
+#include "../string/string.h"
 
 static uint32_t* page_directory;
 

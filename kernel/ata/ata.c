@@ -1,6 +1,6 @@
 #include "ata.h"
-#include "io.h"
-#include "string.h"
+#include "../io/io.h"
+#include "../string/string.h"
 
 #define ATA_PRIMARY_DATA     0x1F0
 #define ATA_PRIMARY_ERROR    0x1F1

@@ -1,8 +1,8 @@
 #ifndef PROCESS_H
 #define PROCESS_H
 
-#include "types.h"
-#include "isr.h"
+#include "../types/types.h"
+#include "../isr/isr.h"
 
 /* Process states */
 #define PROC_READY    0

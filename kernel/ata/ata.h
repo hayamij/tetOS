@@ -1,7 +1,7 @@
 #ifndef ATA_H
 #define ATA_H
 
-#include "types.h"
+#include "../types/types.h"
 
 #define ATA_SECTOR_SIZE 512
 

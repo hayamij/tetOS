@@ -1,13 +1,13 @@
 #include "shell.h"
-#include "keyboard.h"
-#include "vga.h"
-#include "stdio.h"
-#include "string.h"
-#include "timer.h"
-#include "pmm.h"
-#include "heap.h"
-#include "ata.h"
-#include "process.h"
+#include "../keyboard/keyboard.h"
+#include "../vga/vga.h"
+#include "../stdio/stdio.h"
+#include "../string/string.h"
+#include "../timer/timer.h"
+#include "../pmm/pmm.h"
+#include "../heap/heap.h"
+#include "../ata/ata.h"
+#include "../process/process.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
