@@ -61,11 +61,12 @@ $(KERNEL_BIN): $(KERNEL_OBJECTS)
 
 $(OS_IMAGE): $(BOOTLOADER) $(KERNEL_BIN)
 	cat $(BOOTLOADER) $(KERNEL_BIN) > $@
-	@MINIMUM=$$((51 * 512)); \
+	@TARGET=$$((2048 * 512)); \
 	CURRENT=$$(stat -c%s $@); \
-	if [ $$CURRENT -lt $$MINIMUM ]; then \
-		dd if=/dev/zero bs=1 count=$$(($$MINIMUM - $$CURRENT)) >> $@ 2>/dev/null; \
+	if [ $$CURRENT -lt $$TARGET ]; then \
+		dd if=/dev/zero bs=1 count=$$(($$TARGET - $$CURRENT)) >> $@ 2>/dev/null; \
 	fi
+	@echo "Image: $$(stat -c%s $@) bytes ($$(( $$(stat -c%s $@) / 512 )) sectors)"
 
 # Clean build artifacts
 .PHONY: clean
