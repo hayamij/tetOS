@@ -1,6 +1,6 @@
 # tetOS
 
-> *"Not a Vocaloid. Not Windows. But it's real."*
+> *"it's real."*
 
 An operating system inspired by **Kasane Teto** — a character born from an April Fool's prank in 2008, who became real simply because the community loved her too much to let her stay fictional.
 
