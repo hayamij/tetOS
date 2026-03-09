@@ -1,5 +1,6 @@
 [EXTERN isr_handler]
 [EXTERN irq_handler]
+[EXTERN sched_switch_esp]
 
 %macro ISR_NOERRCODE 1
 [GLOBAL isr%1]
@@ -118,7 +119,17 @@ irq_common_stub:
     push esp
     call irq_handler
     add esp, 4
-    
+
+    ; Check if the scheduler wants a context switch.
+    ; If sched_switch_esp != 0, swap ESP to the new process's saved frame.
+    ; irq_common_stub then restores that frame and irets into the new process.
+    mov eax, [sched_switch_esp]
+    test eax, eax
+    jz .irq_no_switch
+    mov dword [sched_switch_esp], 0
+    mov esp, eax
+.irq_no_switch:
+
     pop eax
     mov ds, ax
     mov es, ax

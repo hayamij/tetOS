@@ -1,10 +1,17 @@
-#include "vga.h"
-#include "idt.h"
-#include "isr.h"
-#include "timer.h"
-#include "keyboard.h"
-#include "shell.h"
-#include "stdio.h"
+#include "vga/vga.h"
+#include "idt/idt.h"
+#include "isr/isr.h"
+#include "timer/timer.h"
+#include "keyboard/keyboard.h"
+#include "shell/shell.h"
+#include "stdio/stdio.h"
+#include "pmm/pmm.h"
+#include "vmm/vmm.h"
+#include "heap/heap.h"
+#include "ata/ata.h"
+#include "process/process.h"
+
+extern uint32_t kernel_end;
 
 void kernel_main(void) {
     vga_init();
@@ -34,6 +41,18 @@ void kernel_main(void) {
     isr_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" ISR initialized\n");
+
+    pmm_init((uint32_t)&kernel_end);
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" PMM initialized (120 MB free)\n");
+
+    vmm_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" VMM initialized (32 MB identity mapped, paging on)\n");
+
+    heap_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Heap initialized (4 MB at 0x400000)\n");
     
     timer_init(100);
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
@@ -42,6 +61,19 @@ void kernel_main(void) {
     keyboard_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Keyboard initialized\n");
+
+    if (ata_init() == 0) {
+        vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+        vga_write(" ATA disk detected\n");
+    } else {
+        vga_write_color("[--]", VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
+        vga_write(" No ATA disk\n");
+    }
+
+    process_init();
+    timer_set_scheduler(schedule);
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Process manager initialized\n");
     
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" VGA text mode active (80x25)\n");

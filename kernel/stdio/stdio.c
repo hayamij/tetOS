@@ -1,6 +1,6 @@
 #include "stdio.h"
-#include "vga.h"
-#include "string.h"
+#include "../vga/vga.h"
+#include "../string/string.h"
 
 typedef __builtin_va_list va_list;
 #define va_start(ap, last) __builtin_va_start(ap, last)
