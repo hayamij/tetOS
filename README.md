@@ -26,7 +26,7 @@ tetOS doesn't know if it will ever be real. It's just a kernel, a shell, a few t
 
 But Teto wasn't real either - until she was. Born from a prank, kept alive by people who refused to let her go. No official backing. No guarantee. Just the stubborn belief that something worth loving deserves to exist.
 
-So this OS carries her name. Not because it's finished. Not because it's good. But because building it is the closest thing to answering that question honestly —
+So this OS carries her name. Not because it's finished. Not because it's good. But because building it is the closest thing to answering that question honestly
 
 *undefined, maybe defeated - but redesigned, and trying.*
 
