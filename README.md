@@ -5,7 +5,7 @@
 </p>
 
 <p align="center">
-  <em>Inspired by — <a href="https://www.youtube.com/watch?v=sqK-jh4TDXo">Jamie Paige - Machine Love (feat. Kasane Teto)</a></em>
+  <em>Inspired by <a href="https://www.youtube.com/watch?v=sqK-jh4TDXo">Jamie Paige - Machine Love (feat. Kasane Teto)</a></em>
 </p>
 
 > *"Not a Vocaloid. Not Windows. But it's real."*
