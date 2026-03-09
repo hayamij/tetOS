@@ -22,3 +22,55 @@ But Teto wasn't real either — until she was. Born from a prank, kept alive by 
 So this OS carries her name. Not because it's finished. Not because it's good. But because building it is the closest thing to answering that question honestly —
 
 *undefined, maybe defeated — but redesigned, and trying.*
+
+## Getting Started
+
+### Prerequisites
+
+- `nasm` — assembler
+- `gcc` (with 32-bit support / `gcc-multilib`)
+- `ld` (GNU linker)
+- `qemu-system-i386` — for running the OS
+- `gdb` — optional, for debugging
+
+On Debian/Ubuntu:
+```bash
+sudo apt install nasm gcc gcc-multilib binutils qemu-system-x86 gdb
+```
+
+### Build & Run
+
+```bash
+# Build the OS image
+make all
+
+# Build and run in QEMU
+make run
+
+# Clean build artifacts
+make clean
+```
+
+### Debugging
+
+Start QEMU with a GDB server (paused at startup):
+```bash
+make debug
+```
+
+Then in another terminal, attach GDB:
+```bash
+gdb
+(gdb) target remote localhost:1234
+(gdb) continue
+```
+
+### VS Code Tasks
+
+If you're using VS Code, the following tasks are available via **Terminal → Run Task**:
+
+| Task | Description |
+|------|-------------|
+| `Build tetOS` | Runs `make all` |
+| `Run in QEMU` | Builds then launches in QEMU |
+| `Debug in QEMU` | Launches QEMU with GDB server (`-s -S`) |
