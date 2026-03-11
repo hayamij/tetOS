@@ -28,8 +28,6 @@ But Teto wasn't real either - until she was. Born from a prank, kept alive by pe
 
 So this OS carries her name. Not because it's finished. Not because it's good. But because building it is the closest thing to answering that question honestly
 
-*undefined, maybe defeated - but redesigned, and trying.*
-
 ## The Build So Far
 
 <p align="center">
