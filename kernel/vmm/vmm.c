@@ -56,7 +56,7 @@ uint32_t* vmm_create_address_space(void) {
 
 void vmm_copy_kernel_space(uint32_t *new_dir) {
     uint32_t i;
-    for (i = 768; i < 1024; i++) {
+    for (i = 0; i < 1024; i++) {
         new_dir[i] = page_directory[i];
     }
 }
@@ -70,7 +70,7 @@ void vmm_map_page_in_dir(uint32_t *dir, uint32_t virt, uint32_t phys, uint32_t f
         if (!frame) return;
         uint32_t* tbl = (uint32_t*)frame;
         memset(tbl, 0, PMM_FRAME_SIZE);
-        dir[dir_idx] = frame | PAGE_PRESENT | PAGE_WRITE;
+        dir[dir_idx] = frame | PAGE_PRESENT | PAGE_WRITE | (flags & PAGE_USER);
     }
 
     uint32_t* table = (uint32_t*)(dir[dir_idx] & ~0xFFFu);

@@ -9,8 +9,10 @@
 #include "../ata/ata.h"
 #include "../process/process.h"
 #include "../fs/tetfs.h"
+#include "../exec/exec.h"
 #include "../syscall/syscall.h"
 #include "../user/usermode.h"
+#include "../user/appseed.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
@@ -97,6 +99,8 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  spawn  - Spawn a demo background process\n");
         vga_write("  kill   - Kill a process by PID\n");
         vga_write("  utest  - Spawn a ring3 user-mode test process\n");
+        vga_write("  run    - Run ELF file from tetFS root\n");
+        vga_write("  seed   - Install bundled hello.elf\n");
         vga_write("  format - Format tetFS on disk\n");
         vga_write("  ls     - List files\n");
         vga_write("  cd     - Change directory\n");
@@ -194,12 +198,34 @@ static void shell_execute_command(const char* cmd) {
         else
             vga_write("Failed: no free process slots\n");
     }
+    else if (strncmp(cmd, "run ", 4) == 0) {
+        if (!tetfs_is_mounted()) {
+            vga_write("No filesystem mounted. Run 'format' first.\n");
+        } else {
+            int pid = exec_elf_from_disk(cmd + 4);
+            if (pid >= 0) {
+                kprintf("ELF started PID %u: %s\n", (uint32_t)pid, cmd + 4);
+            } else {
+                kprintf("Failed to run ELF (%d).\n", pid);
+            }
+        }
+    }
     else if (strcmp(cmd, "format") == 0) {
         vga_write("Formatting tetFS...");
-        if (tetfs_format() == 0)
+        if (tetfs_format() == 0) {
             vga_write(" done.\n");
-        else
+            if (appseed_install() == 0)
+                vga_write("Bundled hello.elf installed.\n");
+            else
+                vga_write("Bundled hello.elf install failed.\n");
+        } else
             vga_write(" FAILED.\n");
+    }
+    else if (strcmp(cmd, "seed") == 0) {
+        if (appseed_install() == 0)
+            vga_write("Bundled hello.elf installed.\n");
+        else
+            vga_write("Bundled hello.elf install failed.\n");
     }
     else if (strcmp(cmd, "ls") == 0) {
         if (!tetfs_is_mounted()) { vga_write("No filesystem mounted. Run 'format' first.\n"); }

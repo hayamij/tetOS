@@ -21,5 +21,6 @@ void graphics_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, color_t 
 void graphics_draw_line(uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, color_t color);
 void graphics_draw_char(uint32_t x, uint32_t y, char c, color_t fg, color_t bg);
 void graphics_draw_string(uint32_t x, uint32_t y, const char *str, color_t fg, color_t bg);
+void graphics_present(void);
 
 #endif

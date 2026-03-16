@@ -6,20 +6,20 @@
 /* ======================================================
  * tetFS — simple flat filesystem for tetOS
  *
- * Disk layout (kernel occupies LBA 1-50):
- *   LBA  51      : Superblock
- *   LBA  52-55   : Inode table  (4 sectors × 8 inodes = 32 inodes, 64 B each)
- *   LBA  56-57   : Block bitmap (2 sectors = 1024 B = tracks 8192 blocks)
- *   LBA  58+     : Data blocks  (512 B each)
+ * Disk layout (bootloader at LBA 0, kernel reserved at LBA 1-255):
+ *   LBA  256     : Superblock
+ *   LBA  257-260 : Inode table  (4 sectors × 8 inodes = 32 inodes, 64 B each)
+ *   LBA  261-262 : Block bitmap (2 sectors = 1024 B = tracks 8192 blocks)
+ *   LBA  263+    : Data blocks  (512 B each)
  * ====================================================== */
 
 #define TETFS_MAGIC           0x74455453u
 #define TETFS_VERSION         1
 
-#define TETFS_LBA_SUPER       61
-#define TETFS_LBA_INODES      62
-#define TETFS_LBA_BITMAP      66
-#define TETFS_LBA_DATA        68
+#define TETFS_LBA_SUPER       256
+#define TETFS_LBA_INODES      257
+#define TETFS_LBA_BITMAP      261
+#define TETFS_LBA_DATA        263
 
 #define TETFS_INODE_SIZE      64
 #define TETFS_MAX_INODES      32

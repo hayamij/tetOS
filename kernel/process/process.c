@@ -117,7 +117,7 @@ process_t *process_create(void (*entry)(void), const char *name) {
     return p;
 }
 
-process_t *process_create_user(void (*entry)(void), const char *name) {
+process_t *process_create_user(void (*entry)(void), uint32_t user_stack_top, const char *name) {
     uint32_t i;
     process_t *p = NULL;
     for (i = 1; i < MAX_PROCS; i++) {
@@ -144,6 +144,8 @@ process_t *process_create_user(void (*entry)(void), const char *name) {
     }
 
     uint32_t *sp = (uint32_t *)(stack + PROC_STACK);
+    *(--sp) = 0x23;
+    *(--sp) = user_stack_top;
     *(--sp) = 0x202;
     *(--sp) = 0x1B;
     *(--sp) = (uint32_t)entry;
@@ -169,7 +171,9 @@ process_t *process_create_user(void (*entry)(void), const char *name) {
 
 void process_exit(void) {
     current_process->state = PROC_DEAD;
-    while (1) __asm__ volatile("hlt");
+    while (1) {
+        __asm__ volatile("sti; hlt");
+    }
 }
 
 int process_kill(uint32_t pid) {

@@ -14,6 +14,7 @@
 #include "process/process.h"
 #include "fs/tetfs.h"
 #include "syscall/syscall.h"
+#include "user/appseed.h"
 
 extern uint32_t kernel_end;
 
@@ -69,6 +70,7 @@ void kernel_main(void) {
     graphics_fill_rect(270, 30, 40, 40, 15);
     graphics_draw_string(120, 80, "tetOS v0.1", 15, 2);
     graphics_draw_string(80, 100, "VGA Graphics Mode 13h", 15, 2);
+    graphics_present();
 
     heap_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
@@ -97,6 +99,7 @@ void kernel_main(void) {
 
     fs_init();
     if (tetfs_is_mounted()) {
+        appseed_install();
         vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
         vga_write(" tetFS mounted\n");
     } else {

@@ -2,6 +2,7 @@
 #include "../string/string.h"
 
 static uint8_t *framebuffer = (uint8_t *)GRAPHICS_MEMORY;
+static uint8_t backbuffer[GRAPHICS_WIDTH * GRAPHICS_HEIGHT];
 
 static const uint8_t font_8x8[256][8] = {
     {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00},
@@ -137,20 +138,25 @@ static const uint8_t font_8x8[256][8] = {
 
 void graphics_init(void) {
     graphics_clear(0);
+    graphics_present();
 }
 
 void graphics_clear(color_t color) {
-    memset(framebuffer, color, GRAPHICS_WIDTH * GRAPHICS_HEIGHT);
+    memset(backbuffer, color, GRAPHICS_WIDTH * GRAPHICS_HEIGHT);
 }
 
 void graphics_set_pixel(uint32_t x, uint32_t y, color_t color) {
     if (x >= GRAPHICS_WIDTH || y >= GRAPHICS_HEIGHT) return;
-    framebuffer[y * GRAPHICS_WIDTH + x] = color;
+    backbuffer[y * GRAPHICS_WIDTH + x] = color;
 }
 
 color_t graphics_get_pixel(uint32_t x, uint32_t y) {
     if (x >= GRAPHICS_WIDTH || y >= GRAPHICS_HEIGHT) return 0;
-    return framebuffer[y * GRAPHICS_WIDTH + x];
+    return backbuffer[y * GRAPHICS_WIDTH + x];
+}
+
+void graphics_present(void) {
+    memcpy(framebuffer, backbuffer, GRAPHICS_WIDTH * GRAPHICS_HEIGHT);
 }
 
 void graphics_fill_rect(uint32_t x, uint32_t y, uint32_t w, uint32_t h, color_t color) {

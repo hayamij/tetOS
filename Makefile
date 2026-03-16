@@ -14,6 +14,7 @@ LDFLAGS = -m elf_i386 -T linker.ld
 BUILD_DIR = build
 BOOT_DIR = boot
 KERNEL_DIR = kernel
+USER_DIR = user
 
 # Kernel module manifests
 KERNEL_MODULE_MKS = $(shell find $(KERNEL_DIR) -mindepth 2 -maxdepth 2 -name "module.mk" | sort)
@@ -29,6 +30,8 @@ KERNEL_ROOT_C_SOURCES = $(KERNEL_DIR)/kernel.c
 BOOTLOADER = $(BUILD_DIR)/boot.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 OS_IMAGE = $(BUILD_DIR)/tetos.bin
+USER_ELF = $(BUILD_DIR)/user/hello.elf
+USER_ELF_OBJ = $(BUILD_DIR)/user/hello_elf.o
 
 # Source files
 KERNEL_ENTRY_SOURCE = $(KERNEL_DIR)/entry.asm
@@ -36,10 +39,20 @@ KERNEL_OBJECTS = $(BUILD_DIR)/$(KERNEL_ENTRY_SOURCE:.asm=.o) \
 				 $(patsubst %.c,$(BUILD_DIR)/%.o,$(KERNEL_ROOT_C_SOURCES)) \
 				 $(patsubst %.c,$(BUILD_DIR)/%.o,$(KERNEL_C_SOURCES)) \
 				 $(patsubst %.asm,$(BUILD_DIR)/%.o,$(KERNEL_ASM_SOURCES))
+KERNEL_OBJECTS += $(USER_ELF_OBJ)
 
 # Default target
 .PHONY: all
 all: $(OS_IMAGE)
+
+$(USER_ELF): $(USER_DIR)/hello.c $(KERNEL_DIR)/user/libc.c $(USER_DIR)/linker.ld | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
+	$(CC) -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-pic -fno-pie -c $(USER_DIR)/hello.c -o $(BUILD_DIR)/user/hello.o
+	$(CC) -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-pic -fno-pie -c $(KERNEL_DIR)/user/libc.c -o $(BUILD_DIR)/user/libc.o
+	$(LD) -m elf_i386 -T $(USER_DIR)/linker.ld -o $@ $(BUILD_DIR)/user/hello.o $(BUILD_DIR)/user/libc.o
+
+$(USER_ELF_OBJ): $(USER_ELF)
+	$(LD) -m elf_i386 -r -b binary -o $@ $(USER_ELF)
 
 # Create build directory
 $(BUILD_DIR):
