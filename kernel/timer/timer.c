@@ -4,17 +4,23 @@
 
 static volatile uint32_t tick_count = 0;
 static void (*sched_hook)(struct registers *) = NULL;
+static uint8_t sched_hook_enabled = 0;
 
 void timer_set_scheduler(void (*cb)(struct registers *)) {
     sched_hook = cb;
+    sched_hook_enabled = (cb != 0);
 }
 
 static void timer_callback(struct registers* regs) {
     tick_count++;
-    if (sched_hook) sched_hook(regs);
+    if (sched_hook_enabled && sched_hook) sched_hook(regs);
 }
 
 void timer_init(uint32_t frequency) {
+    tick_count = 0;
+    sched_hook = 0;
+    sched_hook_enabled = 0;
+
     isr_register_handler(32, timer_callback);
     
     uint32_t divisor = 1193180 / frequency;

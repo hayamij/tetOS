@@ -15,20 +15,27 @@ BUILD_DIR = build
 BOOT_DIR = boot
 KERNEL_DIR = kernel
 
+# Kernel module manifests
+KERNEL_MODULE_MKS = $(shell find $(KERNEL_DIR) -mindepth 2 -maxdepth 2 -name "module.mk" | sort)
+
+# Source files are declared in kernel/*/module.mk
+KERNEL_C_SOURCES =
+KERNEL_ASM_SOURCES =
+KERNEL_ROOT_C_SOURCES = $(KERNEL_DIR)/kernel.c
+
+-include $(KERNEL_MODULE_MKS)
+
 # Output files
 BOOTLOADER = $(BUILD_DIR)/boot.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
 OS_IMAGE = $(BUILD_DIR)/tetos.bin
 
-# Source files (recursive search through subdirectories)
-KERNEL_C_SOURCES = $(shell find $(KERNEL_DIR) -name "*.c")
-KERNEL_ASM_SOURCES = $(filter-out $(KERNEL_DIR)/entry.asm, $(shell find $(KERNEL_DIR) -name "*.asm"))
-KERNEL_OBJECTS = $(BUILD_DIR)/entry.o \
-                 $(addprefix $(BUILD_DIR)/, $(patsubst %.c, %.o, $(notdir $(KERNEL_C_SOURCES)))) \
-                 $(addprefix $(BUILD_DIR)/, $(patsubst %.asm, %.o, $(notdir $(KERNEL_ASM_SOURCES))))
-
-# VPATH lets make find source files in subdirectories
-VPATH = $(shell find $(KERNEL_DIR) -type d)
+# Source files
+KERNEL_ENTRY_SOURCE = $(KERNEL_DIR)/entry.asm
+KERNEL_OBJECTS = $(BUILD_DIR)/$(KERNEL_ENTRY_SOURCE:.asm=.o) \
+				 $(patsubst %.c,$(BUILD_DIR)/%.o,$(KERNEL_ROOT_C_SOURCES)) \
+				 $(patsubst %.c,$(BUILD_DIR)/%.o,$(KERNEL_C_SOURCES)) \
+				 $(patsubst %.asm,$(BUILD_DIR)/%.o,$(KERNEL_ASM_SOURCES))
 
 # Default target
 .PHONY: all
@@ -42,16 +49,14 @@ $(BUILD_DIR):
 $(BOOTLOADER): $(BOOT_DIR)/boot.asm | $(BUILD_DIR)
 	nasm -f bin $< -o $@
 
-# Build kernel entry point (explicit rule)
-$(BUILD_DIR)/entry.o: $(KERNEL_DIR)/entry.asm | $(BUILD_DIR)
-	$(ASM) $(ASMFLAGS) $< -o $@
-
-# Build kernel C files (VPATH resolves source location)
+# Build kernel C files
 $(BUILD_DIR)/%.o: %.c | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
-# Build kernel assembly files (VPATH resolves source location)
+# Build kernel assembly files
 $(BUILD_DIR)/%.o: %.asm | $(BUILD_DIR)
+	@mkdir -p $(dir $@)
 	$(ASM) $(ASMFLAGS) $< -o $@
 
 # Link kernel

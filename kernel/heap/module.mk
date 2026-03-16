@@ -1,0 +1,1 @@
+KERNEL_C_SOURCES += kernel/heap/heap.c

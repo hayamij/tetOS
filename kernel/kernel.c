@@ -1,4 +1,6 @@
 #include "vga/vga.h"
+#include "graphics/graphics.h"
+#include "gdt/gdt.h"
 #include "idt/idt.h"
 #include "isr/isr.h"
 #include "timer/timer.h"
@@ -11,11 +13,16 @@
 #include "ata/ata.h"
 #include "process/process.h"
 #include "fs/tetfs.h"
+#include "syscall/syscall.h"
 
 extern uint32_t kernel_end;
 
 void kernel_main(void) {
     vga_init();
+    
+    gdt_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" GDT and TSS initialized\n");
     
     vga_write("\n");
     vga_write_color("          === tetOS v0.1.0 ===\n", VGA_COLOR_LIGHT_CYAN, VGA_COLOR_BLACK);
@@ -32,9 +39,6 @@ void kernel_main(void) {
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Protected Mode initialized\n");
     
-    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_write(" GDT from bootloader\n");
-    
     idt_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" IDT initialized\n");
@@ -43,6 +47,10 @@ void kernel_main(void) {
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" ISR initialized\n");
 
+    syscall_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Syscall initialized (int 0x80)\n");
+
     pmm_init((uint32_t)&kernel_end);
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" PMM initialized (120 MB free)\n");
@@ -50,6 +58,17 @@ void kernel_main(void) {
     vmm_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" VMM initialized (32 MB identity mapped, paging on)\n");
+
+    graphics_init();
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Graphics initialized (VGA mode 13h, 320x200)\n");
+    
+    graphics_fill_rect(10, 10, 300, 180, 1);
+    graphics_fill_rect(20, 20, 280, 160, 2);
+    graphics_fill_rect(30, 30, 40, 40, 15);
+    graphics_fill_rect(270, 30, 40, 40, 15);
+    graphics_draw_string(120, 80, "tetOS v0.1", 15, 2);
+    graphics_draw_string(80, 100, "VGA Graphics Mode 13h", 15, 2);
 
     heap_init();
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);

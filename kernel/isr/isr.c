@@ -2,60 +2,67 @@
 #include "../idt/idt.h"
 #include "../vga/vga.h"
 #include "../io/io.h"
+#include "../stdio/stdio.h"
+
+extern void isr0(void); extern void isr1(void); extern void isr2(void); extern void isr3(void);
+extern void isr4(void); extern void isr5(void); extern void isr6(void); extern void isr7(void);
+extern void isr8(void); extern void isr9(void); extern void isr10(void); extern void isr11(void);
+extern void isr12(void); extern void isr13(void); extern void isr14(void); extern void isr15(void);
+extern void isr16(void); extern void isr17(void); extern void isr18(void); extern void isr19(void);
+extern void isr20(void); extern void isr21(void); extern void isr22(void); extern void isr23(void);
+extern void isr24(void); extern void isr25(void); extern void isr26(void); extern void isr27(void);
+extern void isr28(void); extern void isr29(void); extern void isr30(void); extern void isr31(void);
+extern void isr128(void);
+extern void irq0(void); extern void irq1(void); extern void irq2(void); extern void irq3(void);
+extern void irq4(void); extern void irq5(void); extern void irq6(void); extern void irq7(void);
+extern void irq8(void); extern void irq9(void); extern void irq10(void); extern void irq11(void);
+extern void irq12(void); extern void irq13(void); extern void irq14(void); extern void irq15(void);
 
 isr_handler_t interrupt_handlers[256];
 
-extern void isr0(void);
-extern void isr1(void);
-extern void isr2(void);
-extern void isr3(void);
-extern void isr4(void);
-extern void isr5(void);
-extern void isr6(void);
-extern void isr7(void);
-extern void isr8(void);
-extern void isr9(void);
-extern void isr10(void);
-extern void isr11(void);
-extern void isr12(void);
-extern void isr13(void);
-extern void isr14(void);
-extern void isr15(void);
-extern void isr16(void);
-extern void isr17(void);
-extern void isr18(void);
-extern void isr19(void);
-extern void isr20(void);
-extern void isr21(void);
-extern void isr22(void);
-extern void isr23(void);
-extern void isr24(void);
-extern void isr25(void);
-extern void isr26(void);
-extern void isr27(void);
-extern void isr28(void);
-extern void isr29(void);
-extern void isr30(void);
-extern void isr31(void);
+static void pic_remap(void) {
+    outb(0x20, 0x11);
+    io_wait();
+    outb(0xA0, 0x11);
+    io_wait();
 
-extern void irq0(void);
-extern void irq1(void);
-extern void irq2(void);
-extern void irq3(void);
-extern void irq4(void);
-extern void irq5(void);
-extern void irq6(void);
-extern void irq7(void);
-extern void irq8(void);
-extern void irq9(void);
-extern void irq10(void);
-extern void irq11(void);
-extern void irq12(void);
-extern void irq13(void);
-extern void irq14(void);
-extern void irq15(void);
+    outb(0x21, 0x20);
+    io_wait();
+    outb(0xA1, 0x28);
+    io_wait();
+
+    outb(0x21, 0x04);
+    io_wait();
+    outb(0xA1, 0x02);
+    io_wait();
+
+    outb(0x21, 0x01);
+    io_wait();
+    outb(0xA1, 0x01);
+    io_wait();
+
+    outb(0x21, 0xFF);
+    outb(0xA1, 0xFF);
+    outb(0x20, 0x20);
+    outb(0xA0, 0x20);
+}
+
+static void fatal_exception(struct registers* regs) {
+    vga_write_color("\n[FATAL] ", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+    kprintf("INT=%u ERR=0x%x EIP=0x%x CS=0x%x EFLAGS=0x%x ESP=0x%x\n",
+            regs->int_no, regs->err_code, regs->eip, regs->cs, regs->eflags, regs->esp);
+    while (1) {
+        __asm__ __volatile__("cli; hlt");
+    }
+}
+
+void isr_register_handler(uint8_t n, isr_handler_t handler) {
+    interrupt_handlers[n] = handler;
+}
 
 void isr_init(void) {
+    pic_remap();
+
     idt_set_gate(0, (uint32_t)isr0, 0x08, 0x8E);
     idt_set_gate(1, (uint32_t)isr1, 0x08, 0x8E);
     idt_set_gate(2, (uint32_t)isr2, 0x08, 0x8E);
@@ -88,6 +95,7 @@ void isr_init(void) {
     idt_set_gate(29, (uint32_t)isr29, 0x08, 0x8E);
     idt_set_gate(30, (uint32_t)isr30, 0x08, 0x8E);
     idt_set_gate(31, (uint32_t)isr31, 0x08, 0x8E);
+    idt_set_gate(128, (uint32_t)isr128, 0x08, 0xEF);
     
     idt_set_gate(32, (uint32_t)irq0, 0x08, 0x8E);
     idt_set_gate(33, (uint32_t)irq1, 0x08, 0x8E);
@@ -105,27 +113,28 @@ void isr_init(void) {
     idt_set_gate(45, (uint32_t)irq13, 0x08, 0x8E);
     idt_set_gate(46, (uint32_t)irq14, 0x08, 0x8E);
     idt_set_gate(47, (uint32_t)irq15, 0x08, 0x8E);
-    
-    outb(0x20, 0x11);
-    outb(0xA0, 0x11);
-    outb(0x21, 0x20);
-    outb(0xA1, 0x28);
-    outb(0x21, 0x04);
-    outb(0xA1, 0x02);
-    outb(0x21, 0x01);
-    outb(0xA1, 0x01);
-    outb(0x21, 0xFF);
-    outb(0xA1, 0xFF);
-}
+    idt_set_gate(8, (uint32_t)irq0, 0x08, 0x8E);
+    idt_set_gate(9, (uint32_t)irq1, 0x08, 0x8E);
 
-void isr_register_handler(uint8_t n, isr_handler_t handler) {
-    interrupt_handlers[n] = handler;
+    isr_register_handler(6, fatal_exception);
+    isr_register_handler(13, fatal_exception);
+    isr_register_handler(14, fatal_exception);
 }
 
 void isr_handler(struct registers* regs) {
     if (regs->int_no < 256 && interrupt_handlers[regs->int_no] != 0) {
         isr_handler_t handler = interrupt_handlers[regs->int_no];
         handler(regs);
+        return;
+    }
+
+    if (regs->int_no < 32) {
+        vga_write_color("\n[UNHANDLED] ", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
+        kprintf("INT=%u ERR=0x%x EIP=0x%x CS=0x%x EFLAGS=0x%x ESP=0x%x\n",
+                regs->int_no, regs->err_code, regs->eip, regs->cs, regs->eflags, regs->esp);
+        while (1) {
+            __asm__ __volatile__("cli; hlt");
+        }
     }
 }
 

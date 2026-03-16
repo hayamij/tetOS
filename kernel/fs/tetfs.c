@@ -6,11 +6,17 @@ static int fs_mounted = 0;
 static tetfs_fd_t fd_table[TETFS_MAX_FD];
 
 static int read_super(tetfs_super_t *s) {
-    return ata_read(TETFS_LBA_SUPER, 1, s);
+    uint8_t sector[512];
+    if (ata_read(TETFS_LBA_SUPER, 1, sector) != 0) return -1;
+    memcpy(s, sector, sizeof(tetfs_super_t));
+    return 0;
 }
 
 static int write_super(const tetfs_super_t *s) {
-    return ata_write(TETFS_LBA_SUPER, 1, s);
+    uint8_t sector[512];
+    memset(sector, 0, sizeof(sector));
+    memcpy(sector, s, sizeof(tetfs_super_t));
+    return ata_write(TETFS_LBA_SUPER, 1, sector);
 }
 
 static int read_inode_sector(uint32_t lba, uint8_t *buf) {
