@@ -9,6 +9,10 @@
 #include "../ata/ata.h"
 #include "../process/process.h"
 #include "../fs/tetfs.h"
+#include "../exec/exec.h"
+#include "../syscall/syscall.h"
+#include "../user/usermode.h"
+#include "../user/appseed.h"
 
 #define COMMAND_BUFFER_SIZE 256
 
@@ -17,6 +21,19 @@ static uint32_t command_pos = 0;
 
 static uint16_t cwd_inode = TETFS_ROOT_INODE;
 static char     cwd_path[128] = "/";
+
+static int parse_u32(const char *s, uint32_t *out) {
+    uint32_t v = 0;
+    int i = 0;
+    if (!s || !s[0]) return -1;
+    while (s[i]) {
+        if (s[i] < '0' || s[i] > '9') return -1;
+        v = v * 10 + (uint32_t)(s[i] - '0');
+        i++;
+    }
+    *out = v;
+    return 0;
+}
 
 static void demo_proc_entry(void) {
     volatile uint16_t *pos = (volatile uint16_t *)0xB8000 + 79;
@@ -30,6 +47,33 @@ static void demo_proc_entry(void) {
             __asm__ volatile("nop");
     }
     *pos = (uint16_t)((0x07 << 8) | ' ');
+    process_exit();
+}
+
+static void user_demo_ring3(void) {
+    static const char msg[] = "[ring3] hello from user mode via int 0x80\n";
+    __asm__ __volatile__(
+        "movl %0, %%ebx\n"
+        "movl %1, %%ecx\n"
+        "movl %2, %%eax\n"
+        "int $0x80\n"
+        "movl %3, %%eax\n"
+        "int $0x80\n"
+        :
+        : "r"(msg), "r"((uint32_t)(sizeof(msg) - 1)), "i"(SYS_WRITE), "i"(SYS_EXIT)
+        : "eax", "ebx", "ecx", "memory"
+    );
+    while (1) {
+        __asm__ __volatile__("hlt");
+    }
+}
+
+static void user_demo_entry(void) {
+    uint8_t *stack = (uint8_t *)kmalloc(4096);
+    if (!stack) {
+        process_exit();
+    }
+    enter_user_mode(user_demo_ring3, (uint32_t)(stack + 4096));
     process_exit();
 }
 
@@ -53,6 +97,10 @@ static void shell_execute_command(const char* cmd) {
         vga_write("  disk   - Show disk info\n");
         vga_write("  ps     - List running processes\n");
         vga_write("  spawn  - Spawn a demo background process\n");
+        vga_write("  kill   - Kill a process by PID\n");
+        vga_write("  utest  - Spawn a ring3 user-mode test process\n");
+        vga_write("  run    - Run ELF file from tetFS root\n");
+        vga_write("  seed   - Install bundled hello.elf\n");
         vga_write("  format - Format tetFS on disk\n");
         vga_write("  ls     - List files\n");
         vga_write("  cd     - Change directory\n");
@@ -128,12 +176,56 @@ static void shell_execute_command(const char* cmd) {
             vga_write("Failed: no free process slots\n");
         }
     }
+    else if (strncmp(cmd, "kill ", 5) == 0) {
+        uint32_t pid;
+        int r;
+        if (parse_u32(cmd + 5, &pid) != 0) {
+            vga_write("Usage: kill <pid>\n");
+        } else {
+            r = process_kill(pid);
+            if (r == 0)
+                kprintf("Killed PID %u\n", pid);
+            else if (r == -2)
+                vga_write("Cannot kill current process.\n");
+            else
+                vga_write("PID not found.\n");
+        }
+    }
+    else if (strcmp(cmd, "utest") == 0) {
+        process_t *p = process_create(user_demo_entry, "userdemo");
+        if (p)
+            kprintf("Spawned PID %u: %s\n", p->pid, p->name);
+        else
+            vga_write("Failed: no free process slots\n");
+    }
+    else if (strncmp(cmd, "run ", 4) == 0) {
+        if (!tetfs_is_mounted()) {
+            vga_write("No filesystem mounted. Run 'format' first.\n");
+        } else {
+            int pid = exec_elf_from_disk(cmd + 4);
+            if (pid >= 0) {
+                kprintf("ELF started PID %u: %s\n", (uint32_t)pid, cmd + 4);
+            } else {
+                kprintf("Failed to run ELF (%d).\n", pid);
+            }
+        }
+    }
     else if (strcmp(cmd, "format") == 0) {
         vga_write("Formatting tetFS...");
-        if (tetfs_format() == 0)
+        if (tetfs_format() == 0) {
             vga_write(" done.\n");
-        else
+            if (appseed_install() == 0)
+                vga_write("Bundled hello.elf installed.\n");
+            else
+                vga_write("Bundled hello.elf install failed.\n");
+        } else
             vga_write(" FAILED.\n");
+    }
+    else if (strcmp(cmd, "seed") == 0) {
+        if (appseed_install() == 0)
+            vga_write("Bundled hello.elf installed.\n");
+        else
+            vga_write("Bundled hello.elf install failed.\n");
     }
     else if (strcmp(cmd, "ls") == 0) {
         if (!tetfs_is_mounted()) { vga_write("No filesystem mounted. Run 'format' first.\n"); }

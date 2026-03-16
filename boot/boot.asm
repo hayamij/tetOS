@@ -2,20 +2,21 @@
 [ORG 0x0600]            ; assembled for 0x0600; BIOS loads us at 0x7C00
 
 KERNEL_OFFSET  equ 0x1000
-KERNEL_SECTORS equ 60
+KERNEL_SECTORS equ 100
 
 ; -------------------------------------------------------
 ; BIOS loads the MBR at 0x7C00.  We copy ourselves to
 ; 0x0600 first, so the kernel can load into 0x1000-0x8800
-; without stomping on our code.  Stack lives at 0x9000.
+; without stomping on our code.  Real-mode stack lives at 0x9000:0xFFFC.
 ; -------------------------------------------------------
 start:
     cli
     xor  ax, ax
     mov  ds, ax
     mov  es, ax
+    mov  ax, 0x9000
     mov  ss, ax
-    mov  sp, 0x9000
+    mov  sp, 0xFFFC
 
     ; Copy 512 bytes: 0x7C00 -> 0x0600
     mov  si, 0x7C00
@@ -33,9 +34,6 @@ relocated:
 
     mov  si, MSG_LOADING
     call print_string
-
-    mov  al, [BOOT_DRIVE]
-    call print_hex_byte
 
     mov  dh, KERNEL_SECTORS
     mov  dl, [BOOT_DRIVE]
@@ -138,7 +136,7 @@ print_hex_byte:
 ; -------------------------------------------------------
 DISK_ERROR_MSG: db 'Disk read error!', 0
 MSG_ERROR_CODE: db ' Err: ', 0
-MSG_LOADING:    db 'Loading tetOS...', 13, 10, 0
+MSG_LOADING:    db 'Loading tetOS v2...', 13, 10, 0
 MSG_LOADED:     db 'Kernel loaded!',   13, 10, 0
 BOOT_DRIVE:     db 0
 
@@ -193,6 +191,7 @@ init_pm:
     mov  es, ax
     mov  fs, ax
     mov  gs, ax
+    mov  word [0xB8000], 0x0A50
     mov  ebp, 0x90000
     mov  esp, ebp
     call KERNEL_OFFSET

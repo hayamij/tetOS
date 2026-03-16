@@ -13,4 +13,6 @@ gdt_flush:
     
     jmp 0x08:.flush
 .flush:
+    mov ax, 0x28
+    ltr ax
     ret

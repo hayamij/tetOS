@@ -1,6 +1,7 @@
 [EXTERN isr_handler]
 [EXTERN irq_handler]
 [EXTERN sched_switch_esp]
+[EXTERN sched_switch_cr3]
 
 %macro ISR_NOERRCODE 1
 [GLOBAL isr%1]
@@ -60,6 +61,13 @@ ISR_NOERRCODE 28
 ISR_NOERRCODE 29
 ISR_NOERRCODE 30
 ISR_NOERRCODE 31
+
+[GLOBAL isr128]
+isr128:
+    cli
+    push dword 0
+    push dword 128
+    jmp isr_common_stub
 
 IRQ 0, 32
 IRQ 1, 33
@@ -128,6 +136,14 @@ irq_common_stub:
     jz .irq_no_switch
     mov dword [sched_switch_esp], 0
     mov esp, eax
+    
+    ; Load new page directory if context switched
+    mov ecx, [sched_switch_cr3]
+    test ecx, ecx
+    jz .irq_no_cr3_switch
+    mov dword [sched_switch_cr3], 0
+    mov cr3, ecx
+.irq_no_cr3_switch:
 .irq_no_switch:
 
     pop eax
