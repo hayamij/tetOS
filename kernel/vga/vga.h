@@ -4,7 +4,7 @@
 #include "../types/types.h"
 
 #define VGA_WIDTH 80
-#define VGA_HEIGHT 25
+#define VGA_HEIGHT 50
 #define VGA_MEMORY 0xB8000
 
 typedef enum {
@@ -33,5 +33,7 @@ void vga_write(const char* str);
 void vga_write_color(const char* str, uint8_t fg, uint8_t bg);
 void vga_set_color(uint8_t fg, uint8_t bg);
 void vga_newline(void);
+void vga_set_cursor(uint32_t x, uint32_t y);
+void vga_get_cursor(uint32_t *x, uint32_t *y);
 
 #endif // VGA_H
