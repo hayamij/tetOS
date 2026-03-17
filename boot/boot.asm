@@ -32,6 +32,12 @@ relocated:
     sti
     mov  [BOOT_DRIVE], dl
 
+    mov  ax, 0x0003
+    int  0x10
+    mov  ax, 0x1112
+    xor  bx, bx
+    int  0x10
+
     mov  si, MSG_LOADING
     call print_string
 
@@ -136,7 +142,7 @@ print_hex_byte:
 ; -------------------------------------------------------
 DISK_ERROR_MSG: db 'Disk read error!', 0
 MSG_ERROR_CODE: db ' Err: ', 0
-MSG_LOADING:    db 'Loading tetOS v2...', 13, 10, 0
+MSG_LOADING:    db 'Loading tetOS...', 13, 10, 0
 MSG_LOADED:     db 'Kernel loaded!',   13, 10, 0
 BOOT_DRIVE:     db 0
 
@@ -191,7 +197,6 @@ init_pm:
     mov  es, ax
     mov  fs, ax
     mov  gs, ax
-    mov  word [0xB8000], 0x0A50
     mov  ebp, 0x90000
     mov  esp, ebp
     call KERNEL_OFFSET

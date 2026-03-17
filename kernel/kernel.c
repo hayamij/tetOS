@@ -108,7 +108,7 @@ void kernel_main(void) {
     }
     
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_write(" VGA text mode active (80x25)\n");
+    vga_write(" VGA text mode active (80x50)\n");
     
     vga_write("\n");
     vga_set_color(VGA_COLOR_LIGHT_MAGENTA, VGA_COLOR_BLACK);

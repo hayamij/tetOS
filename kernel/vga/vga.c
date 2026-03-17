@@ -97,3 +97,15 @@ void vga_write_color(const char* str, uint8_t fg, uint8_t bg) {
     vga_write(str);
     vga_current_color = old_color;
 }
+
+void vga_set_cursor(uint32_t x, uint32_t y) {
+    if (x >= VGA_WIDTH) x = VGA_WIDTH - 1;
+    if (y >= VGA_HEIGHT) y = VGA_HEIGHT - 1;
+    vga_index = y * VGA_WIDTH + x;
+    vga_update_cursor();
+}
+
+void vga_get_cursor(uint32_t *x, uint32_t *y) {
+    if (x) *x = vga_index % VGA_WIDTH;
+    if (y) *y = vga_index / VGA_WIDTH;
+}
