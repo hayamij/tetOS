@@ -113,8 +113,7 @@ void isr_init(void) {
     idt_set_gate(45, (uint32_t)irq13, 0x08, 0x8E);
     idt_set_gate(46, (uint32_t)irq14, 0x08, 0x8E);
     idt_set_gate(47, (uint32_t)irq15, 0x08, 0x8E);
-    idt_set_gate(8, (uint32_t)irq0, 0x08, 0x8E);
-    idt_set_gate(9, (uint32_t)irq1, 0x08, 0x8E);
+
 
     isr_register_handler(6, fatal_exception);
     isr_register_handler(13, fatal_exception);

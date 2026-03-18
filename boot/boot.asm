@@ -47,6 +47,10 @@ relocated:
 
     mov  si, MSG_LOADED
     call print_string
+    
+    ; Debug: print "Switching to PM"
+    mov  si, MSG_PM_SWITCH
+    call print_string
 
     call switch_to_pm
 
@@ -144,6 +148,7 @@ DISK_ERROR_MSG: db 'Disk read error!', 0
 MSG_ERROR_CODE: db ' Err: ', 0
 MSG_LOADING:    db 'Loading tetOS...', 13, 10, 0
 MSG_LOADED:     db 'Kernel loaded!',   13, 10, 0
+MSG_PM_SWITCH:  db 'Switching to PM...', 13, 10, 0
 BOOT_DRIVE:     db 0
 
 ; -------------------------------------------------------
