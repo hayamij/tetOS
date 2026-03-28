@@ -36,17 +36,6 @@ So this OS carries her name. Not because it's finished. Not because it's good. B
 
 tetOS boots into a 32-bit protected mode kernel with a working interactive shell. What you see above is real - not a mock-up, not a simulator. It's running on bare metal (emulated via QEMU), loading from disk, managing memory, and responding to keystrokes.
 
-**Currently implemented:**
-- Custom MBR bootloader (NASM, LBA extended read, self-relocating to 0x0600)
-- x86 protected mode: GDT, IDT, ISR, IRQ handling
-- Physical & virtual memory management (PMM bitmap, VMM paging, heap)
-- VGA text mode driver (colors, cursor, scrolling)
-- PS/2 keyboard driver
-- ATA PIO disk driver
-- Preemptive Round-Robin process scheduler (context switch via timer IRQ)
-- **tetFS** - a custom flat filesystem on disk (inodes, block bitmap, data blocks)
-- Interactive shell with: `ls`, `cd`, `pwd`, `cat`, `touch`, `mkdir`, `write`, `rm`, `ps`, `spawn`, `mem`, `uptime`, and more
-
 ## Getting Started
 
 ### Prerequisites
