@@ -53,6 +53,14 @@ void pmm_free_frame(uint32_t addr) {
     pmm_used--;
 }
 
+uint32_t alloc_frame(void) {
+    return pmm_alloc_frame();
+}
+
+void free_frame(uint32_t addr) {
+    pmm_free_frame(addr);
+}
+
 uint32_t pmm_free_frames(void) {
     return pmm_total - pmm_used;
 }

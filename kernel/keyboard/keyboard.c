@@ -135,7 +135,7 @@ static void keyboard_callback(struct registers* regs) {
 }
 
 void keyboard_init(void) {
-    isr_register_handler(33, keyboard_callback);
+    register_irq_handler(1, keyboard_callback);
     
     while (inb(0x64) & 0x01) {
         inb(0x60);

@@ -5,6 +5,8 @@
 
 #define SYS_EXIT   0
 #define SYS_WRITE  1
+#define SYS_FORK   2
+#define SYS_EXEC   3
 #define SYS_GETPID 7
 #define SYS_OPEN   8
 #define SYS_READ   9

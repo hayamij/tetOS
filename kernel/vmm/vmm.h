@@ -17,6 +17,8 @@ typedef struct {
 
 void vmm_init(void);
 void vmm_map_page(uint32_t virt, uint32_t phys, uint32_t flags);
+void map_page(uint32_t virt, uint32_t phys, uint32_t flags);
+void unmap_page(uint32_t virt);
 uint32_t* vmm_create_address_space(void);
 void vmm_copy_kernel_space(uint32_t *new_dir);
 void vmm_map_page_in_dir(uint32_t *dir, uint32_t virt, uint32_t phys, uint32_t flags);

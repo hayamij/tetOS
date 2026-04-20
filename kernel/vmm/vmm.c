@@ -46,6 +46,21 @@ void vmm_map_page(uint32_t virt, uint32_t phys, uint32_t flags) {
     __asm__ __volatile__("invlpg (%0)" : : "r"(virt) : "memory");
 }
 
+void map_page(uint32_t virt, uint32_t phys, uint32_t flags) {
+    vmm_map_page(virt, phys, flags);
+}
+
+void unmap_page(uint32_t virt) {
+    uint32_t dir_idx = virt >> 22;
+    uint32_t table_idx = (virt >> 12) & 0x3FF;
+
+    if (!(page_directory[dir_idx] & PAGE_PRESENT)) return;
+
+    uint32_t* table = (uint32_t*)(page_directory[dir_idx] & ~0xFFFu);
+    table[table_idx] = 0;
+    __asm__ __volatile__("invlpg (%0)" : : "r"(virt) : "memory");
+}
+
 uint32_t* vmm_create_address_space(void) {
     uint32_t *new_dir = (uint32_t*)pmm_alloc_frame();
     if (!new_dir) return 0;

@@ -23,6 +23,12 @@ static void reset_process_slot(process_t *p) {
     p->esp = 0;
     p->name[0] = '\0';
     p->next = NULL;
+    p->user_page_dir = 0;
+    for (uint32_t i = 0; i < MAX_FD; i++) {
+        p->user_fd[i].inode_idx = 0;
+        p->user_fd[i].offset = 0;
+        p->user_fd_used[i] = 0;
+    }
 }
 
 static void copy_name(char *dst, const char *src) {
@@ -34,8 +40,11 @@ static void copy_name(char *dst, const char *src) {
 
 void process_init(void) {
     uint32_t i;
-    for (i = 0; i < MAX_PROCS; i++)
+    for (i = 0; i < MAX_PROCS; i++) {
         process_table[i].state = PROC_UNUSED;
+        process_table[i].stack = NULL;
+        process_table[i].next = NULL;
+    }
 
     /* Process 0 = kernel/shell (already running, using boot stack) */
     process_t *p = &process_table[0];
@@ -45,6 +54,12 @@ void process_init(void) {
     p->stack = NULL;    /* uses the boot stack */
     p->next  = p;
     copy_name(p->name, "shell");
+    p->user_page_dir = 0;
+    for (i = 0; i < MAX_FD; i++) {
+        p->user_fd[i].inode_idx = 0;
+        p->user_fd[i].offset = 0;
+        p->user_fd_used[i] = 0;
+    }
 
     run_queue       = p;
     current_process = p;
@@ -278,4 +293,20 @@ int process_list(process_t **out, int max) {
         p = p->next;
     } while (p != run_queue);
     return n;
+}
+
+int process_fork_stub(void) {
+    process_t *cur = process_current();
+    if (!cur) return -1;
+
+    process_t *child = process_create(0, "fork-child");
+    if (!child) return -1;
+
+    child->state = PROC_ZOMBIE;
+    return (int)child->pid;
+}
+
+int process_exec_stub(const char *path) {
+    (void)path;
+    return 0;
 }

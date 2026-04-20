@@ -14,5 +14,7 @@ typedef void (*isr_handler_t)(struct registers*);
 
 void isr_init(void);
 void isr_register_handler(uint8_t n, isr_handler_t handler);
+void register_irq_handler(uint8_t irq, isr_handler_t handler);
+void unregister_irq_handler(uint8_t irq);
 
 #endif
