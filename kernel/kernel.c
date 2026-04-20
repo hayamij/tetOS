@@ -15,13 +15,31 @@
 #include "fs/tetfs.h"
 #include "syscall/syscall.h"
 #include "user/appseed.h"
+#include "io/serial.h"
 
 extern uint32_t kernel_end;
 
 void kernel_main(void) {
+    serial_init();
+    serial_puts("[SERIAL] kernel_main entered\r\n");
+
+    // Direct VGA write test before vga_init
+    volatile uint16_t* vga = (volatile uint16_t*)0xB8000;
+    uint16_t entry = ('K' | (0x0F << 8));
+    vga[0] = entry;
+    vga[1] = ('E' | (0x0F << 8));
+    vga[2] = ('R' | (0x0F << 8));
+    vga[3] = ('N' | (0x0F << 8));
+    vga[4] = ('E' | (0x0F << 8));
+    vga[5] = ('L' | (0x0F << 8));
+    vga[6] = ('1' | (0x0F << 8));  // Marker 1: kernel_main entered
+    
     vga_init();
+    serial_puts("[SERIAL] vga_init done\r\n");
     
     gdt_init();
+    serial_puts("[SERIAL] gdt_init done\r\n");
+    vga[7] = ('2' | (0x0F << 8));  // Marker 2: GDT done
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" GDT and TSS initialized\n");
     
@@ -41,26 +59,36 @@ void kernel_main(void) {
     vga_write(" Protected Mode initialized\n");
     
     idt_init();
+    serial_puts("[SERIAL] idt_init done\r\n");
+    vga[8] = ('3' | (0x0F << 8));  // Marker 3: IDT done
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" IDT initialized\n");
     
     isr_init();
+    serial_puts("[SERIAL] isr_init done\r\n");
+    vga[9] = ('4' | (0x0F << 8));  // Marker 4: ISR done
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" ISR initialized\n");
 
     syscall_init();
+    serial_puts("[SERIAL] syscall_init done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Syscall initialized (int 0x80)\n");
 
     pmm_init((uint32_t)&kernel_end);
+    serial_puts("[SERIAL] pmm_init done\r\n");
+    vga[10] = ('5' | (0x0F << 8));  // Marker 5: PMM done
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" PMM initialized (120 MB free)\n");
 
     vmm_init();
+    serial_puts("[SERIAL] vmm_init done (paging on)\r\n");
+    vga[11] = ('6' | (0x0F << 8));  // Marker 6: VMM done - PAGING ACTIVE NOW
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" VMM initialized (32 MB identity mapped, paging on)\n");
 
     graphics_init();
+    serial_puts("[SERIAL] graphics_init done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Graphics initialized (VGA mode 13h, 320x200)\n");
     
@@ -73,36 +101,46 @@ void kernel_main(void) {
     graphics_present();
 
     heap_init();
+    serial_puts("[SERIAL] heap_init done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Heap initialized (4 MB at 0x400000)\n");
     
     timer_init(100);
+    serial_puts("[SERIAL] timer_init done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Timer initialized\n");
     
     keyboard_init();
+    serial_puts("[SERIAL] keyboard_init done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Keyboard initialized\n");
 
     if (ata_init() == 0) {
+        serial_puts("[SERIAL] ata_init ok\r\n");
         vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
         vga_write(" ATA disk detected\n");
     } else {
+        serial_puts("[SERIAL] ata_init failed\r\n");
         vga_write_color("[--]", VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
         vga_write(" No ATA disk\n");
     }
 
     process_init();
+    serial_puts("[SERIAL] process_init done\r\n");
     timer_set_scheduler(schedule);
+    serial_puts("[SERIAL] timer_set_scheduler done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Process manager initialized\n");
 
     fs_init();
+    serial_puts("[SERIAL] fs_init done\r\n");
     if (tetfs_is_mounted()) {
         appseed_install();
+        serial_puts("[SERIAL] appseed_install done\r\n");
         vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
         vga_write(" tetFS mounted\n");
     } else {
+        serial_puts("[SERIAL] tetFS not mounted\r\n");
         vga_write_color("[--]", VGA_COLOR_DARK_GREY, VGA_COLOR_BLACK);
         vga_write(" tetFS not formatted (run 'format')\n");
     }
@@ -118,9 +156,12 @@ void kernel_main(void) {
     
     vga_set_color(VGA_COLOR_WHITE, VGA_COLOR_BLACK);
     
+    serial_puts("[SERIAL] enabling interrupts (sti)\r\n");
     __asm__ __volatile__("sti");
     
+    serial_puts("[SERIAL] shell_init\r\n");
     shell_init();
+    serial_puts("[SERIAL] shell_run\r\n");
     shell_run();
     
     while(1) {

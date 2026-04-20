@@ -1,120 +1,115 @@
 #include "syscall.h"
 #include "../isr/isr.h"
 #include "../vga/vga.h"
+#include "../stdio/stdio.h"
 #include "../process/process.h"
-#include "../fs/tetfs.h"
+#include "../fs/vfs.h"
 #include "../heap/heap.h"
 
+#define SYSCALL_MAX 64
+#define USER_PTR_MIN 0x00001000u
+#define USER_PTR_MAX 0xBFFFFFFFu
+
+typedef int32_t (*syscall_fn_t)(struct registers *regs);
+
+static syscall_fn_t syscall_table[SYSCALL_MAX];
+
+static int validate_user_ptr(const void *ptr, uint32_t len) {
+    uint32_t p = (uint32_t)ptr;
+    if (p < USER_PTR_MIN || p > USER_PTR_MAX) return 0;
+    if (len == 0) return 1;
+    if ((uint32_t)(p + len - 1) < p) return 0;
+    if ((uint32_t)(p + len - 1) > USER_PTR_MAX) return 0;
+    return 1;
+}
+
+static int32_t sys_exit(struct registers *regs) {
+    (void)regs;
+    process_exit();
+    return 0;
+}
+
+static int32_t sys_write(struct registers *regs) {
+    const char *buf = (const char *)regs->ebx;
+    uint32_t len = regs->ecx;
+    if (!validate_user_ptr(buf, len)) return -1;
+
+    for (uint32_t i = 0; i < len; i++) {
+        vga_putchar(buf[i]);
+    }
+    return (int32_t)len;
+}
+
+static int32_t sys_open(struct registers *regs) {
+    const char *path = (const char *)regs->ebx;
+    if (!validate_user_ptr(path, 1)) return -1;
+    return vfs_open(path, VFS_O_RDONLY);
+}
+
+static int32_t sys_read(struct registers *regs) {
+    int fd = (int)regs->ebx;
+    void *buf = (void *)regs->ecx;
+    uint32_t len = regs->edx;
+    if (!validate_user_ptr(buf, len)) return -1;
+    return vfs_read(fd, buf, len);
+}
+
+static int32_t sys_close(struct registers *regs) {
+    int fd = (int)regs->ebx;
+    return vfs_close(fd);
+}
+
+static int32_t sys_getpid(struct registers *regs) {
+    (void)regs;
+    process_t *p = process_current();
+    return p ? (int32_t)p->pid : 0;
+}
+
+static int32_t sys_fork(struct registers *regs) {
+    (void)regs;
+    return process_fork_stub();
+}
+
+static int32_t sys_exec(struct registers *regs) {
+    const char *path = (const char *)regs->ebx;
+    if (!validate_user_ptr(path, 1)) return -1;
+    return process_exec_stub(path);
+}
+
+static int32_t sys_malloc(struct registers *regs) {
+    return (int32_t)kmalloc(regs->ebx);
+}
+
+static int32_t sys_free(struct registers *regs) {
+    void *ptr = (void *)regs->ebx;
+    kfree(ptr);
+    return 0;
+}
+
 static void syscall_handler(struct registers *regs) {
-    uint32_t i;
-    const char *buf;
-    process_t *p;
-    int fd;
-
-    if (regs->eax == SYS_EXIT) {
-        process_exit();
+    uint32_t num = regs->eax;
+    if (num >= SYSCALL_MAX || !syscall_table[num]) {
+        regs->eax = (uint32_t)-1;
         return;
     }
 
-    if (regs->eax == SYS_WRITE) {
-        buf = (const char *)regs->ebx;
-        for (i = 0; i < regs->ecx; i++)
-            vga_putchar(buf[i]);
-        regs->eax = regs->ecx;
-        return;
-    }
-
-    if (regs->eax == SYS_GETPID) {
-        p = process_current();
-        regs->eax = p ? p->pid : 0;
-        return;
-    }
-
-    if (regs->eax == SYS_OPEN) {
-        const char *filename = (const char *)regs->ebx;
-        p = process_current();
-        if (!p) {
-            regs->eax = -1;
-            return;
-        }
-
-        for (fd = 0; fd < MAX_FD; fd++) {
-            if (!p->user_fd_used[fd]) break;
-        }
-        if (fd >= MAX_FD) {
-            regs->eax = -1;
-            return;
-        }
-
-        int idx = tetfs_find(filename, TETFS_ROOT_INODE);
-        if (idx < 0) {
-            regs->eax = -1;
-            return;
-        }
-
-        p->user_fd[fd].inode_idx = (uint16_t)idx;
-        p->user_fd[fd].offset = 0;
-        p->user_fd_used[fd] = 1;
-        regs->eax = fd;
-        return;
-    }
-
-    if (regs->eax == SYS_READ) {
-        fd = (int)regs->ebx;
-        char *buf = (char *)regs->ecx;
-        uint32_t len = regs->edx;
-
-        p = process_current();
-        if (!p || fd < 0 || fd >= MAX_FD || !p->user_fd_used[fd]) {
-            regs->eax = -1;
-            return;
-        }
-
-        int nread = tetfs_read(p->user_fd[fd].inode_idx, buf, p->user_fd[fd].offset, len);
-        if (nread < 0) {
-            regs->eax = -1;
-            return;
-        }
-
-        p->user_fd[fd].offset += nread;
-        regs->eax = nread;
-        return;
-    }
-
-    if (regs->eax == SYS_CLOSE) {
-        fd = (int)regs->ebx;
-        p = process_current();
-        if (!p || fd < 0 || fd >= MAX_FD) {
-            regs->eax = -1;
-            return;
-        }
-
-        p->user_fd_used[fd] = 0;
-        regs->eax = 0;
-        return;
-    }
-
-    if (regs->eax == SYS_MALLOC) {
-        uint32_t size = regs->ebx;
-        void *ptr = kmalloc(size);
-        if (!ptr) {
-            regs->eax = 0;
-            return;
-        }
-        regs->eax = (uint32_t)ptr;
-        return;
-    }
-
-    if (regs->eax == SYS_FREE) {
-        void *ptr = (void *)regs->ebx;
-        kfree(ptr);
-        regs->eax = 0;
-        return;
-    }
-
-    regs->eax = (uint32_t)-1;
+    regs->eax = (uint32_t)syscall_table[num](regs);
 }
 
 void syscall_init(void) {
+    for (uint32_t i = 0; i < SYSCALL_MAX; i++) syscall_table[i] = 0;
+
+    syscall_table[SYS_EXIT] = sys_exit;
+    syscall_table[SYS_WRITE] = sys_write;
+    syscall_table[SYS_FORK] = sys_fork;
+    syscall_table[SYS_EXEC] = sys_exec;
+    syscall_table[SYS_GETPID] = sys_getpid;
+    syscall_table[SYS_OPEN] = sys_open;
+    syscall_table[SYS_READ] = sys_read;
+    syscall_table[SYS_CLOSE] = sys_close;
+    syscall_table[SYS_MALLOC] = sys_malloc;
+    syscall_table[SYS_FREE] = sys_free;
+
     isr_register_handler(0x80, syscall_handler);
+    printk("[syscall] table initialized\n");
 }

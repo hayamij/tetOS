@@ -21,7 +21,7 @@ void timer_init(uint32_t frequency) {
     sched_hook = 0;
     sched_hook_enabled = 0;
 
-    isr_register_handler(32, timer_callback);
+    register_irq_handler(0, timer_callback);
     
     uint32_t divisor = 1193180 / frequency;
     

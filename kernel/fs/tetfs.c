@@ -1,4 +1,5 @@
 #include "tetfs.h"
+#include "vfs.h"
 #include "../ata/ata.h"
 #include "../string/string.h"
 
@@ -276,6 +277,7 @@ int tetfs_count_children(uint16_t parent) {
 
 void fs_init(void) {
     memset(fd_table, 0, sizeof(fd_table));
+    vfs_init();
     tetfs_mount();
 }
 

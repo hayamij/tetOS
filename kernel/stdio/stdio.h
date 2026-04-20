@@ -3,6 +3,7 @@
 
 #include "../types/types.h"
 
+void printk(const char* fmt, ...);
 void kprintf(const char* fmt, ...);
 
 #endif

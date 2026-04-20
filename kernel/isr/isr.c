@@ -3,6 +3,7 @@
 #include "../vga/vga.h"
 #include "../io/io.h"
 #include "../stdio/stdio.h"
+#include "../debug/debug.h"
 
 extern void isr0(void); extern void isr1(void); extern void isr2(void); extern void isr3(void);
 extern void isr4(void); extern void isr5(void); extern void isr6(void); extern void isr7(void);
@@ -19,6 +20,16 @@ extern void irq8(void); extern void irq9(void); extern void irq10(void); extern 
 extern void irq12(void); extern void irq13(void); extern void irq14(void); extern void irq15(void);
 
 isr_handler_t interrupt_handlers[256];
+
+static const char *exception_names[32] = {
+    "Divide Error", "Debug", "NMI", "Breakpoint", "Overflow", "BOUND",
+    "Invalid Opcode", "Device Not Available", "Double Fault", "Coprocessor Segment Overrun",
+    "Invalid TSS", "Segment Not Present", "Stack Fault", "General Protection",
+    "Page Fault", "Reserved", "x87 Floating-Point", "Alignment Check", "Machine Check",
+    "SIMD Floating-Point", "Virtualization", "Control Protection", "Reserved", "Reserved",
+    "Reserved", "Reserved", "Reserved", "Reserved", "Hypervisor Injection",
+    "VMM Communication", "Security", "Reserved"
+};
 
 static void pic_remap(void) {
     outb(0x20, 0x11);
@@ -49,15 +60,24 @@ static void pic_remap(void) {
 
 static void fatal_exception(struct registers* regs) {
     vga_write_color("\n[FATAL] ", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
-    kprintf("INT=%u ERR=0x%x EIP=0x%x CS=0x%x EFLAGS=0x%x ESP=0x%x\n",
-            regs->int_no, regs->err_code, regs->eip, regs->cs, regs->eflags, regs->esp);
-    while (1) {
-        __asm__ __volatile__("cli; hlt");
-    }
+    kprintf("%s | INT=%u ERR=0x%x EIP=0x%x CS=0x%x EFLAGS=0x%x ESP=0x%x\n",
+            exception_names[regs->int_no], regs->int_no, regs->err_code,
+            regs->eip, regs->cs, regs->eflags, regs->esp);
+    panic("Unhandled CPU exception", regs->eip, regs->err_code);
 }
 
 void isr_register_handler(uint8_t n, isr_handler_t handler) {
     interrupt_handlers[n] = handler;
+}
+
+void register_irq_handler(uint8_t irq, isr_handler_t handler) {
+    if (irq > 15) return;
+    interrupt_handlers[32 + irq] = handler;
+}
+
+void unregister_irq_handler(uint8_t irq) {
+    if (irq > 15) return;
+    interrupt_handlers[32 + irq] = 0;
 }
 
 void isr_init(void) {
@@ -113,8 +133,7 @@ void isr_init(void) {
     idt_set_gate(45, (uint32_t)irq13, 0x08, 0x8E);
     idt_set_gate(46, (uint32_t)irq14, 0x08, 0x8E);
     idt_set_gate(47, (uint32_t)irq15, 0x08, 0x8E);
-    idt_set_gate(8, (uint32_t)irq0, 0x08, 0x8E);
-    idt_set_gate(9, (uint32_t)irq1, 0x08, 0x8E);
+
 
     isr_register_handler(6, fatal_exception);
     isr_register_handler(13, fatal_exception);
@@ -130,11 +149,10 @@ void isr_handler(struct registers* regs) {
 
     if (regs->int_no < 32) {
         vga_write_color("\n[UNHANDLED] ", VGA_COLOR_LIGHT_RED, VGA_COLOR_BLACK);
-        kprintf("INT=%u ERR=0x%x EIP=0x%x CS=0x%x EFLAGS=0x%x ESP=0x%x\n",
-                regs->int_no, regs->err_code, regs->eip, regs->cs, regs->eflags, regs->esp);
-        while (1) {
-            __asm__ __volatile__("cli; hlt");
-        }
+        kprintf("%s | INT=%u ERR=0x%x EIP=0x%x CS=0x%x EFLAGS=0x%x ESP=0x%x\n",
+                exception_names[regs->int_no], regs->int_no, regs->err_code,
+                regs->eip, regs->cs, regs->eflags, regs->esp);
+        panic("Unhandled interrupt", regs->eip, regs->err_code);
     }
 }
 

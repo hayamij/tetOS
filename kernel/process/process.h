@@ -6,8 +6,10 @@
 
 #define PROC_READY    0
 #define PROC_RUNNING  1
-#define PROC_DEAD     2
+#define PROC_BLOCKED  2
+#define PROC_ZOMBIE   3
 #define PROC_UNUSED   0xFF
+#define PROC_DEAD     PROC_ZOMBIE
 
 #define MAX_PROCS     16
 #define PROC_STACK    4096
@@ -41,6 +43,8 @@ int        process_kill(uint32_t pid);
 void       schedule(struct registers *regs);
 process_t *process_current(void);
 int        process_list(process_t **out, int max);
+int        process_fork_stub(void);
+int        process_exec_stub(const char *path);
 
 /* Written by schedule(), read by irq_common_stub in isr_stub.asm */
 extern volatile uint32_t sched_switch_esp;

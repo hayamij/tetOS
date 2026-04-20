@@ -1,6 +1,7 @@
 #include "stdio.h"
 #include "../vga/vga.h"
 #include "../string/string.h"
+#include "../io/serial.h"
 
 typedef __builtin_va_list va_list;
 #define va_start(ap, last) __builtin_va_start(ap, last)
@@ -13,6 +14,7 @@ static void kprintf_uint(uint32_t value, int base) {
     
     if (value == 0) {
         vga_putchar('0');
+        serial_putchar('0');
         return;
     }
     
@@ -23,22 +25,22 @@ static void kprintf_uint(uint32_t value, int base) {
     }
     
     while (i > 0) {
-        vga_putchar(buf[--i]);
+        char c = buf[--i];
+        vga_putchar(c);
+        serial_putchar(c);
     }
 }
 
 static void kprintf_int(int32_t value) {
     if (value < 0) {
         vga_putchar('-');
+        serial_putchar('-');
         value = -value;
     }
     kprintf_uint((uint32_t)value, 10);
 }
 
-void kprintf(const char* fmt, ...) {
-    va_list args;
-    va_start(args, fmt);
-    
+static void vprintk(const char* fmt, va_list args) {
     for (size_t i = 0; fmt[i] != '\0'; i++) {
         if (fmt[i] == '%' && fmt[i + 1] != '\0') {
             i++;
@@ -54,23 +56,47 @@ void kprintf(const char* fmt, ...) {
                     kprintf_uint(va_arg(args, uint32_t), 16);
                     break;
                 case 's':
-                    vga_write(va_arg(args, const char*));
+                {
+                    const char *s = va_arg(args, const char*);
+                    vga_write(s);
+                    serial_puts(s);
                     break;
+                }
                 case 'c':
-                    vga_putchar((char)va_arg(args, int));
+                {
+                    char c = (char)va_arg(args, int);
+                    vga_putchar(c);
+                    serial_putchar(c);
                     break;
+                }
                 case '%':
                     vga_putchar('%');
+                    serial_putchar('%');
                     break;
                 default:
                     vga_putchar('%');
                     vga_putchar(fmt[i]);
+                    serial_putchar('%');
+                    serial_putchar(fmt[i]);
                     break;
             }
         } else {
             vga_putchar(fmt[i]);
+            serial_putchar(fmt[i]);
         }
     }
-    
+}
+
+void printk(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintk(fmt, args);
+    va_end(args);
+}
+
+void kprintf(const char* fmt, ...) {
+    va_list args;
+    va_start(args, fmt);
+    vprintk(fmt, args);
     va_end(args);
 }
