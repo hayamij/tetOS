@@ -56,8 +56,8 @@ int bmp_info_from_file(const char *name, uint16_t parent, struct bmp_info *out) 
     return 0;
 }
 
-static uint8_t rgb_to_332(uint8_t r, uint8_t g, uint8_t b) {
-    return (uint8_t)((r & 0xE0) | ((g & 0xE0) >> 3) | ((b & 0xC0) >> 6));
+static color_t rgb_to_color(uint8_t r, uint8_t g, uint8_t b) {
+    return graphics_rgb(r, g, b);
 }
 
 int bmp_draw_from_file(const char *name, uint16_t parent, uint32_t dst_x, uint32_t dst_y) {
@@ -89,7 +89,7 @@ int bmp_draw_from_file(const char *name, uint16_t parent, uint32_t dst_x, uint32
     uint8_t *row = (uint8_t *)kmalloc(row_size);
     if (!row) return -12;
 
-    uint8_t palette_map[256];
+    color_t palette_map[256];
     if (ih.bpp == 8) {
         uint8_t palette[1024];
         uint32_t palette_off = sizeof(bmp_file_header_t) + ih.header_size;
@@ -101,7 +101,7 @@ int bmp_draw_from_file(const char *name, uint16_t parent, uint32_t dst_x, uint32
             uint8_t b = palette[i * 4 + 0];
             uint8_t g = palette[i * 4 + 1];
             uint8_t r = palette[i * 4 + 2];
-            palette_map[i] = rgb_to_332(r, g, b);
+            palette_map[i] = rgb_to_color(r, g, b);
         }
     }
 
@@ -113,12 +113,12 @@ int bmp_draw_from_file(const char *name, uint16_t parent, uint32_t dst_x, uint32
             return -14;
         }
 
-        if (dst_y + y >= GRAPHICS_HEIGHT) continue;
+        if (dst_y + y >= graphics_get_height()) continue;
 
         for (uint32_t x = 0; x < width; x++) {
-            if (dst_x + x >= GRAPHICS_WIDTH) break;
+            if (dst_x + x >= graphics_get_width()) break;
 
-            uint8_t color;
+            color_t color;
             if (ih.bpp == 8) {
                 color = palette_map[row[x]];
             } else {
@@ -126,7 +126,7 @@ int bmp_draw_from_file(const char *name, uint16_t parent, uint32_t dst_x, uint32
                 uint8_t b = row[px + 0];
                 uint8_t g = row[px + 1];
                 uint8_t r = row[px + 2];
-                color = rgb_to_332(r, g, b);
+                color = rgb_to_color(r, g, b);
             }
             graphics_set_pixel(dst_x + x, dst_y + y, color);
         }

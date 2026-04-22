@@ -5,6 +5,9 @@
 #include "isr/isr.h"
 #include "timer/timer.h"
 #include "keyboard/keyboard.h"
+#include "mouse/mouse.h"
+#include "wm/wm.h"
+#include "desktop/desktop.h"
 #include "shell/shell.h"
 #include "stdio/stdio.h"
 #include "pmm/pmm.h"
@@ -89,16 +92,11 @@ void kernel_main(void) {
 
     graphics_init();
     serial_puts("[SERIAL] graphics_init done\r\n");
+        kprintf("[SERIAL] gfx mode %ux%u bpp=%u pitch=%u fb=0x%x\r\n",
+            graphics_get_width(), graphics_get_height(), (uint32_t)graphics_get_bpp(),
+            graphics_get_pitch(), (uint32_t)graphics_framebuffer);
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
-    vga_write(" Graphics initialized (VGA mode 13h, 320x200)\n");
-    
-    graphics_fill_rect(10, 10, 300, 180, 1);
-    graphics_fill_rect(20, 20, 280, 160, 2);
-    graphics_fill_rect(30, 30, 40, 40, 15);
-    graphics_fill_rect(270, 30, 40, 40, 15);
-    graphics_draw_string(120, 80, "tetOS v0.1", 15, 2);
-    graphics_draw_string(80, 100, "VGA Graphics Mode 13h", 15, 2);
-    graphics_present();
+    vga_write(" Graphics initialized (VESA 1024x768x32)\n");
 
     heap_init();
     serial_puts("[SERIAL] heap_init done\r\n");
@@ -114,6 +112,16 @@ void kernel_main(void) {
     serial_puts("[SERIAL] keyboard_init done\r\n");
     vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
     vga_write(" Keyboard initialized\n");
+
+    mouse_init();
+    serial_puts("[SERIAL] mouse_init done\r\n");
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Mouse initialized\n");
+
+    wm_init();
+    serial_puts("[SERIAL] wm_init done\r\n");
+    vga_write_color("[OK]", VGA_COLOR_LIGHT_GREEN, VGA_COLOR_BLACK);
+    vga_write(" Window manager initialized\n");
 
     if (ata_init() == 0) {
         serial_puts("[SERIAL] ata_init ok\r\n");
@@ -159,12 +167,12 @@ void kernel_main(void) {
     serial_puts("[SERIAL] enabling interrupts (sti)\r\n");
     __asm__ __volatile__("sti");
     
-    serial_puts("[SERIAL] shell_init\r\n");
-    shell_init();
-    serial_puts("[SERIAL] shell_run\r\n");
-    shell_run();
-    
+    desktop_init();
+    serial_puts("[SERIAL] desktop_init done\r\n");
+
     while(1) {
+        desktop_update();
+        desktop_render();
         __asm__ __volatile__("hlt");
     }
 }

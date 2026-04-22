@@ -7,7 +7,7 @@ LD = ld
 
 # Flags
 ASMFLAGS = -f elf32
-CFLAGS = -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-pic -fno-pie -nostartfiles -nodefaultlibs -Wall -Wextra -O2
+CFLAGS = -m32 -ffreestanding -nostdlib -nostdinc -fno-builtin -fno-stack-protector -fno-pic -fno-pie -nostartfiles -nodefaultlibs -fno-asynchronous-unwind-tables -fno-unwind-tables -Wall -Wextra -O2
 LDFLAGS = -m elf_i386 -T linker.ld
 
 # Directories
@@ -28,8 +28,9 @@ KERNEL_ROOT_C_SOURCES = $(KERNEL_DIR)/kernel.c
 
 # Output files
 BOOTLOADER = $(BUILD_DIR)/boot.bin
+STAGE2     = $(BUILD_DIR)/stage2.bin
 KERNEL_BIN = $(BUILD_DIR)/kernel.bin
-OS_IMAGE = $(BUILD_DIR)/tetos.bin
+OS_IMAGE   = $(BUILD_DIR)/tetos.bin
 USER_ELF = $(BUILD_DIR)/user/hello.elf
 USER_ELF_OBJ = $(BUILD_DIR)/user/hello_elf.o
 
@@ -58,8 +59,12 @@ $(USER_ELF_OBJ): $(USER_ELF)
 $(BUILD_DIR):
 	mkdir -p $(BUILD_DIR)
 
-# Build bootloader (raw binary)
+# Build stage1 MBR (512 B raw)
 $(BOOTLOADER): $(BOOT_DIR)/boot.asm | $(BUILD_DIR)
+	nasm -f bin $< -o $@
+
+# Build stage2 (8 KB raw)
+$(STAGE2): $(BOOT_DIR)/stage2.asm | $(BUILD_DIR)
 	nasm -f bin $< -o $@
 
 # Build kernel C files
@@ -75,16 +80,17 @@ $(BUILD_DIR)/%.o: %.asm | $(BUILD_DIR)
 # Link kernel
 $(KERNEL_BIN): $(KERNEL_OBJECTS)
 	$(LD) $(LDFLAGS) -o $@ $^
-	objcopy -O binary $@ $@
+	cp $@ $@.dbg && objcopy -O binary $@ $@
 
-$(OS_IMAGE): $(BOOTLOADER) $(KERNEL_BIN)
-	cat $(BOOTLOADER) $(KERNEL_BIN) > $@
-	@TARGET=$$((2048 * 512)); \
+$(OS_IMAGE): $(BOOTLOADER) $(STAGE2) $(KERNEL_BIN)
+	cat $(BOOTLOADER) $(STAGE2) $(KERNEL_BIN) > $@
+	@TARGET=$$((4096 * 512)); \
 	CURRENT=$$(stat -c%s $@); \
 	if [ $$CURRENT -lt $$TARGET ]; then \
 		dd if=/dev/zero bs=1 count=$$(($$TARGET - $$CURRENT)) >> $@ 2>/dev/null; \
 	fi
 	@echo "Image: $$(stat -c%s $@) bytes ($$(( $$(stat -c%s $@) / 512 )) sectors)"
+	@echo "Kernel size: $$(stat -c%s $(KERNEL_BIN)) bytes ($$(( ($$(stat -c%s $(KERNEL_BIN)) + 511) / 512 )) sectors)"
 
 # Clean build artifacts
 .PHONY: clean

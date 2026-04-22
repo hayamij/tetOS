@@ -6,9 +6,9 @@
 [GLOBAL _start]
 
 _start:
-    ; Setup protected mode stack (before BSS zeroing which might affect memory)
-    ; Use a safe location in high memory for kernel stack
-    mov esp, 0x90000            ; Stack at 0x90000 = 576 KB (safe zone before kernel)
+    ; Kernel stack must stay outside .bss (backbuffer) and outside heap (0x400000+).
+    ; Use the gap below heap start so graphics writes cannot corrupt return addresses.
+    mov esp, 0x3FF000
     mov ebp, esp
     
     ; Zero out BSS section

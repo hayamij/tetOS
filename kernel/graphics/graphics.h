@@ -3,11 +3,25 @@
 
 #include "../types/types.h"
 
-#define GRAPHICS_WIDTH 320
-#define GRAPHICS_HEIGHT 200
-#define GRAPHICS_MEMORY 0xA0000
+#define GRAPHICS_MAX_WIDTH  1280
+#define GRAPHICS_MAX_HEIGHT 720
 
-typedef uint8_t color_t;
+typedef uint32_t color_t;
+
+extern uint32_t graphics_width;
+extern uint32_t graphics_height;
+extern uint32_t graphics_pitch;
+extern uint8_t graphics_bpp;
+extern uint8_t *graphics_framebuffer;
+
+uint32_t graphics_get_width(void);
+uint32_t graphics_get_height(void);
+uint32_t graphics_get_pitch(void);
+uint8_t graphics_get_bpp(void);
+
+static inline color_t graphics_rgb(uint8_t r, uint8_t g, uint8_t b) {
+    return ((uint32_t)r << 16) | ((uint32_t)g << 8) | (uint32_t)b;
+}
 
 struct rgb_color {
     uint8_t r, g, b;

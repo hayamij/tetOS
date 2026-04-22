@@ -461,8 +461,10 @@ static void shell_execute_command(const char* cmd) {
             } else {
                 uint32_t x = 0;
                 uint32_t y = 0;
-                if (info.width < GRAPHICS_WIDTH) x = (GRAPHICS_WIDTH - info.width) / 2;
-                if (info.height < GRAPHICS_HEIGHT) y = (GRAPHICS_HEIGHT - info.height) / 2;
+                uint32_t screen_w = graphics_get_width();
+                uint32_t screen_h = graphics_get_height();
+                if (info.width < screen_w) x = (screen_w - info.width) / 2;
+                if (info.height < screen_h) y = (screen_h - info.height) / 2;
                 int vr = bmp_draw_from_file(cmd + 8, cwd_inode, x, y);
                 if (vr != 0) shell_print_bmp_error("bmpview", vr);
                 else kprintf("BMP rendered: %s\n", cmd + 8);

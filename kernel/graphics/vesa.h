@@ -15,6 +15,8 @@ struct vesa_mode_info {
     uint32_t framebuffer;
 };
 
+int vesa_get_boot_mode(struct vesa_mode_info *info);
+
 struct vesa_controller_info {
     char signature[4];
     uint16_t version;

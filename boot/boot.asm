@@ -1,211 +1,69 @@
 [BITS 16]
-[ORG 0x0600]            ; assembled for 0x0600; BIOS loads us at 0x7C00
-
-KERNEL_OFFSET  equ 0x1000
-KERNEL_SECTORS equ 100
+[ORG 0x7C00]
 
 ; -------------------------------------------------------
-; BIOS loads the MBR at 0x7C00.  We copy ourselves to
-; 0x0600 first, so the kernel can load into 0x1000-0x8800
-; without stomping on our code.  Real-mode stack lives at 0x9000:0xFFFC.
+; Stage-1 MBR (512 B). Its job: load stage-2 from LBA 1
+; (16 sectors = 8 KB) into segment 0x2000 (physical 0x20000) and
+; jump there. That keeps stage-2 far above the 0x1000..0xE000 area
+; that the kernel will later occupy.
 ; -------------------------------------------------------
+
+STAGE2_LBA        equ 1
+STAGE2_SECTORS    equ 16
+STAGE2_SEG        equ 0x2000           ; physical 0x20000
+STAGE2_OFF        equ 0x0000
+
 start:
     cli
     xor  ax, ax
     mov  ds, ax
     mov  es, ax
-    mov  ax, 0x9000
     mov  ss, ax
-    mov  sp, 0xFFFC
-
-    ; Copy 512 bytes: 0x7C00 -> 0x0600
-    mov  si, 0x7C00
-    mov  di, 0x0600
-    mov  cx, 256        ; 256 words = 512 bytes
-    rep  movsw
-
-    ; Far-jump into the relocated copy.
-    ; ORG is 0x0600, so all labels already hold the right addresses.
-    jmp  0x0000:relocated
-
-relocated:
+    mov  sp, 0x7C00
     sti
+
     mov  [BOOT_DRIVE], dl
 
-    mov  ax, 0x0003
-    int  0x10
-    mov  ax, 0x1112
-    xor  bx, bx
-    int  0x10
-
-    mov  si, MSG_LOADING
+    mov  si, MSG_STAGE1
     call print_string
 
-    mov  dh, KERNEL_SECTORS
-    mov  dl, [BOOT_DRIVE]
-    call disk_load
-
-    mov  si, MSG_LOADED
-    call print_string
-    
-    ; Debug: print "Switching to PM"
-    mov  si, MSG_PM_SWITCH
-    call print_string
-
-    call switch_to_pm
-
-    jmp $
-
-; -------------------------------------------------------
-; disk_load  --  INT 13h extended LBA read (AH=42h)
-; IN:  dh = sector count, dl = drive number
-; -------------------------------------------------------
-disk_load:
-    xor  ax, ax
-    mov  al, dh
-    mov  [.dap + 2], ax     ; write sector count word into DAP
     mov  ah, 0x42
-    mov  si, .dap
+    mov  dl, [BOOT_DRIVE]
+    mov  si, DAP
     int  0x13
     jc   .error
-    ret
+
+    ; Hand control to stage2 in far form.
+    jmp  STAGE2_SEG:STAGE2_OFF
 
 .error:
-    push ax
-    mov  si, DISK_ERROR_MSG
+    mov  si, MSG_DISK_ERR
     call print_string
-    mov  si, MSG_ERROR_CODE
-    call print_string
-    pop  ax
-    mov  al, ah
-    call print_hex_byte
     jmp  $
 
-; Disk Address Packet (16 bytes)
-.dap:
-    db 0x10             ; packet size
-    db 0x00             ; reserved
-    dw 0                ; sector count  <- filled at runtime
-    dw KERNEL_OFFSET    ; destination offset  (0x1000)
-    dw 0x0000           ; destination segment (0x0000)
-    dd 1                ; LBA lo = 1  (sector right after MBR)
-    dd 0                ; LBA hi = 0
-
-; -------------------------------------------------------
-; print_string  --  SI -> null-terminated string
-; -------------------------------------------------------
 print_string:
     mov  ah, 0x0e
-.loop:
+.ps_loop:
     lodsb
     test al, al
-    jz   .done
+    jz   .ps_done
     int  0x10
-    jmp  .loop
-.done:
+    jmp  .ps_loop
+.ps_done:
     ret
 
-; -------------------------------------------------------
-; print_hex_byte  --  AL -> "0xHH "
-; -------------------------------------------------------
-print_hex_byte:
-    push ax
-    mov  ah, 0x0e
-    mov  al, '0'
-    int  0x10
-    mov  al, 'x'
-    int  0x10
-    pop  ax
+DAP:
+    db 0x10
+    db 0x00
+    dw STAGE2_SECTORS
+    dw STAGE2_OFF
+    dw STAGE2_SEG
+    dd STAGE2_LBA
+    dd 0
 
-    push ax
-    shr  al, 4
-    call .nibble
-    pop  ax
-    and  al, 0x0F
-    call .nibble
-
-    mov  al, ' '
-    mov  ah, 0x0e
-    int  0x10
-    ret
-
-.nibble:
-    cmp  al, 10
-    jl   .digit
-    add  al, 'A' - 10
-    jmp  .print
-.digit:
-    add  al, '0'
-.print:
-    mov  ah, 0x0e
-    int  0x10
-    ret
-
-; -------------------------------------------------------
-; Data
-; -------------------------------------------------------
-DISK_ERROR_MSG: db 'Disk read error!', 0
-MSG_ERROR_CODE: db ' Err: ', 0
-MSG_LOADING:    db 'Loading tetOS...', 13, 10, 0
-MSG_LOADED:     db 'Kernel loaded!',   13, 10, 0
-MSG_PM_SWITCH:  db 'Switching to PM...', 13, 10, 0
-BOOT_DRIVE:     db 0
-
-; -------------------------------------------------------
-; GDT
-; -------------------------------------------------------
-gdt_start:
-    dq 0x0
-
-gdt_code:
-    dw 0xFFFF
-    dw 0x0
-    db 0x0
-    db 10011010b
-    db 11001111b
-    db 0x0
-
-gdt_data:
-    dw 0xFFFF
-    dw 0x0
-    db 0x0
-    db 10010010b
-    db 11001111b
-    db 0x0
-
-gdt_end:
-
-gdt_descriptor:
-    dw gdt_end - gdt_start - 1
-    dd gdt_start
-
-CODE_SEG equ gdt_code - gdt_start
-DATA_SEG equ gdt_data - gdt_start
-
-; -------------------------------------------------------
-; Protected-mode switch
-; -------------------------------------------------------
-[BITS 16]
-switch_to_pm:
-    cli
-    lgdt [gdt_descriptor]
-    mov  eax, cr0
-    or   eax, 0x1
-    mov  cr0, eax
-    jmp  CODE_SEG:init_pm
-
-[BITS 32]
-init_pm:
-    mov  ax, DATA_SEG
-    mov  ds, ax
-    mov  ss, ax
-    mov  es, ax
-    mov  fs, ax
-    mov  gs, ax
-    mov  ebp, 0x90000
-    mov  esp, ebp
-    call KERNEL_OFFSET
-    jmp  $
+BOOT_DRIVE:    db 0
+MSG_STAGE1:    db 'tetOS stage1', 13, 10, 0
+MSG_DISK_ERR:  db 'stage1 disk error', 13, 10, 0
 
 times 510-($-$$) db 0
 dw 0xAA55

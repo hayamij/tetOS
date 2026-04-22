@@ -35,61 +35,25 @@ struct vbe_mode_info {
     uint16_t off_screen_mem_size;
 } __attribute__((packed));
 
-static struct vesa_mode_info current_mode_info = {0};
+#define VBE_MODE_INFO_ADDR 0x0500
 
-int vesa_init(void) {
-    return VESA_SUCCESS;
-}
-
-int vesa_get_mode_info(uint16_t mode, struct vesa_mode_info *info) {
+int vesa_get_boot_mode(struct vesa_mode_info *info) {
     if (!info) return VESA_FAILED;
-    
-    info->mode = mode;
-    
-    if (mode == 0x118) {
-        info->width = 1024;
-        info->height = 768;
-        info->bpp = 32;
-        info->pitch = 1024 * 4;
-        info->framebuffer = 0;
-    } else if (mode == 0x115) {
-        info->width = 800;
-        info->height = 600;
-        info->bpp = 32;
-        info->pitch = 800 * 4;
-        info->framebuffer = 0;
-    } else if (mode == 0x111) {
-        info->width = 640;
-        info->height = 480;
-        info->bpp = 32;
-        info->pitch = 640 * 4;
-        info->framebuffer = 0;
-    } else {
-        return VESA_FAILED;
-    }
-    
-    return VESA_SUCCESS;
-}
 
-int vesa_set_mode(uint16_t mode) {
-    struct vesa_mode_info info;
-    
-    if (vesa_get_mode_info(mode, &info) != VESA_SUCCESS) {
-        return VESA_FAILED;
-    }
-    
-    __asm__ __volatile__(
-        "mov $0x4F02, %%ax\n"
-        "mov %0, %%bx\n"
-        "int $0x10\n"
-        : : "r" (mode)
-        : "ax", "bx"
-    );
-    
-    current_mode_info = info;
-    return VESA_SUCCESS;
-}
+    const struct vbe_mode_info *b = (const struct vbe_mode_info *)VBE_MODE_INFO_ADDR;
 
-int vesa_get_current_mode(void) {
-    return current_mode_info.mode;
+    if (!(b->attributes & 0x01)) return VESA_FAILED;
+    if (!(b->attributes & 0x80)) return VESA_FAILED;
+    if (b->xresolution == 0 || b->yresolution == 0) return VESA_FAILED;
+    if (b->bpp != 24 && b->bpp != 32) return VESA_FAILED;
+    if (b->phys_base_ptr == 0) return VESA_FAILED;
+    if (b->bytes_per_scanline == 0) return VESA_FAILED;
+
+    info->mode        = 0;
+    info->width       = b->xresolution;
+    info->height      = b->yresolution;
+    info->bpp         = b->bpp;
+    info->pitch       = b->bytes_per_scanline;
+    info->framebuffer = b->phys_base_ptr;
+    return VESA_SUCCESS;
 }
